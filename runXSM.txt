@@ -1,0 +1,1 @@
+./xsm -l library.lib -e ../../Compiler/test.xsm --debug

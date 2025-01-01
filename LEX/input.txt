@@ -1,0 +1,5 @@
+ 1.Write a lex file
+ 1.1 to count the number of lines, words, and characters in the input.
+ 1.2 to count the number of integers and floating point numbers appearing in the input.
+ 1.3 to list out all words of length three, starting with "A" to uppercase.
+ 1,4 to list out all C-like comments (both single line and multi line comments) from a text file
