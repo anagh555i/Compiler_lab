@@ -1,0 +1,16 @@
+begin 
+    read(n);
+    m=n;
+    read(a);
+    read(b);
+    while(n>=0) do
+        while(m>=0) do 
+            write(b);
+            m=m-1;
+            break;
+        endwhile;
+        break;
+        write(a);
+        n=n-1;
+    endwhile;
+end

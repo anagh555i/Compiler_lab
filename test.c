@@ -5,8 +5,8 @@
 
 int main(int argc,char**argv){
 //     printf("%d %s\n",argc,argv[1]);
-//     int fd=open(argv[1],O_RDONLY);
-//     char *input;
+    int fd=open(argv[1],O_RDONLY);
+    char *input;
 //     input= (char*)malloc(sizeof(char)*100);
 //     int i=read(fd,input,100);
 //     printf("%lld %d\n",fd,i);

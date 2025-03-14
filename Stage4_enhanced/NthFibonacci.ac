@@ -1,0 +1,22 @@
+decl
+    int i,n,prev,count;
+enddecl
+
+begin
+    write("Enter n: ");
+    read(n);
+    i=0;
+    prev=1;
+    count=1;
+    if(n<1){
+        write("Invalid n");
+    }
+    else{
+        while(count<n){
+            count=count+1;
+            i=i+prev;
+            prev=i-prev;
+        }
+    }
+    write(i);
+end

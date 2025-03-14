@@ -11,7 +11,12 @@
         struct node* right;
     }node;
 
+    extern FILE *yyin;
+    extern void yyerror(char* s);
+    extern int yylex();
+
     node* root;
+    int variables[26];
 
     node* makeNode(int val,int type,char varname,int nodeType,node* left,node* right);
     //makeNode(val,type,varname,nodeType,left,right);
@@ -112,15 +117,75 @@ Expr    :   Expr '+' Expr           {$$=makeNode(0,0,' ',5,$1,$3);}
 %%
 
 int main(){
+    FILE *fp=fopen("input.txt","r");
+    yyin=fp;
     yyparse();
-    outFile=fopen("a.xsm","w");
     printTree(root);
+
+    for(int i=0;i<26;i++) variables[i]=0;
+    evaluator(root);
+    return 0;
+
+    outFile=fopen("a.xsm","w");
     currReg=0;
 
     genHeader();
     genVarSpaceCode();
     int reg=genCode(root);
     genExit();
+}
+
+int evaluator(node* root){
+    int i;
+    switch(root->nodeType){
+        case 0: //connector
+        printf("conn\n");
+            evaluator(root->left);
+            evaluator(root->right);
+            return 100; // junk
+        break;
+        case 1: //constants
+        printf("const\n");
+            return root->val;
+        break;
+        case 2: //Variable
+        printf("var\n");
+            return variables[*(root->varname)-'a'];
+        break;
+        case 3: //Read
+        printf("read\n");
+            i=*(root->left->varname) - 'a';
+            scanf("%d",&variables[i]);
+            return 100;//junk value
+        break;
+        case 4: //Write
+        printf("write\n");
+            i=evaluator(root->left);
+            printf("%d\n",i);
+        break;
+        case 9: //=
+        printf("=\n");
+            i=*(root->left->varname) - 'a';
+            variables[i]=evaluator(root->right);
+            return 100;// junk
+        break;
+        case 5: //+
+        printf("+\n");
+            return evaluator(root->left) + evaluator(root->right);
+        break;
+        case 6: //-
+        printf("-\n");
+            return evaluator(root->left) - evaluator(root->right);
+        break;
+        case 7: //*
+        printf("*\n");
+            return evaluator(root->left) * evaluator(root->right);
+        break;
+        case 8: // /
+        printf("/\n");
+            return evaluator(root->left) / evaluator(root->right);
+        break;
+    }
 }
 
 int genCode(node* root){
@@ -273,7 +338,7 @@ node* makeNode(int val,int type,char varname,int nodeType,node* left,node* right
     return ptr;
 }
 
-yyerror(char* s){
+void yyerror(char* s){
     printf("%s\n",s);
 }
 

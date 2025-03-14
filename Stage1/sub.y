@@ -10,6 +10,10 @@
         struct node* right;
     }node;
 
+    extern FILE *yyin;
+    void yyerror(char* s);
+    extern int yylex();
+
     FILE *outFile;
 
     node* root;
@@ -157,6 +161,6 @@ void freeReg(){
     if(currReg>0) currReg--;
 }
 
-yyerror(char *s){
+void yyerror(char *s){
     printf("%s\n",s);
 }

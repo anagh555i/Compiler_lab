@@ -8,7 +8,9 @@
         struct node* left;
         struct node* right;
     }node;
-
+    extern FILE *yyin;
+    void yyerror(char* s);
+    extern int yylex();
     FILE *outFile;
 
     node* root;
@@ -63,7 +65,7 @@ int main(){
     fprintf(outFile,"\n");
     genWriteCode(reg);
     printTree(root);
-    printf("Run\n./xsm -l library.lib -e <Relative_path_to_xsm_file> --debug");
+    /* printf("Run\n./xsm -l library.lib -e <Relative_path_to_xsm_file> --debug"); */
 }
 
 void genWriteCode(int Wreg){
@@ -163,6 +165,6 @@ void freeReg(){
     if(currReg>0) currReg--;
 }
 
-yyerror(char *s){
+void yyerror(char *s){
     printf("%s\n",s);
 }

@@ -1,0 +1,12 @@
+decl
+    int i,j,n;
+    int arr[10];
+    string sarr[2];
+enddecl
+begin   
+    i=-2;
+    write("**what**");
+    arr[i]=78;
+    write("**********");
+    write(arr[i]);
+end

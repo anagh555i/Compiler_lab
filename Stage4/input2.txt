@@ -1,0 +1,23 @@
+decl
+    int i , n;
+    string str;
+    int *ptr;
+enddecl
+
+begin 
+    n=19;
+    read(n);
+    read(str);
+    write(n);
+    ptr=&n;
+    *ptr=20;
+    write(ptr);
+    write(*ptr);
+    write(&n);
+    write(&n);
+    i=1;
+    while(i<n) do
+        write(i);
+        i=i+1;
+    endwhile;
+end

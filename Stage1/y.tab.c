@@ -67,9 +67,8 @@
 
 
 /* First part of user prologue.  */
-#line 1 "sub.y"
+#line 1 "main.y"
 
-    // FOR POSTFIX EXPRESSION evaluation
     #include<stdio.h>
     #include<stdlib.h>
 
@@ -79,7 +78,9 @@
         struct node* left;
         struct node* right;
     }node;
-
+    extern FILE *yyin;
+    void yyerror(char* s);
+    extern int yylex();
     FILE *outFile;
 
     node* root;
@@ -96,7 +97,7 @@
     int space=0;
     void printTree(node* root);
 
-#line 100 "y.tab.c"
+#line 101 "y.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -140,8 +141,7 @@ extern int yydebug;
     YYEOF = 0,                     /* "end of file"  */
     YYerror = 256,                 /* error  */
     YYUNDEF = 257,                 /* "invalid token"  */
-    NUM = 258,                     /* NUM  */
-    OP = 259                       /* OP  */
+    NUM = 258                      /* NUM  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -151,19 +151,18 @@ extern int yydebug;
 #define YYerror 256
 #define YYUNDEF 257
 #define NUM 258
-#define OP 259
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 30 "sub.y"
+#line 31 "main.y"
 
     int Int;
     struct node* Npointer;
     char Char;
 
-#line 167 "y.tab.c"
+#line 166 "y.tab.c"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -187,10 +186,15 @@ enum yysymbol_kind_t
   YYSYMBOL_YYerror = 1,                    /* error  */
   YYSYMBOL_YYUNDEF = 2,                    /* "invalid token"  */
   YYSYMBOL_NUM = 3,                        /* NUM  */
-  YYSYMBOL_OP = 4,                         /* OP  */
-  YYSYMBOL_YYACCEPT = 5,                   /* $accept  */
-  YYSYMBOL_S = 6,                          /* S  */
-  YYSYMBOL_Expr = 7                        /* Expr  */
+  YYSYMBOL_4_ = 4,                         /* '+'  */
+  YYSYMBOL_5_ = 5,                         /* '-'  */
+  YYSYMBOL_6_ = 6,                         /* '*'  */
+  YYSYMBOL_7_ = 7,                         /* '/'  */
+  YYSYMBOL_8_ = 8,                         /* '('  */
+  YYSYMBOL_9_ = 9,                         /* ')'  */
+  YYSYMBOL_YYACCEPT = 10,                  /* $accept  */
+  YYSYMBOL_S = 11,                         /* S  */
+  YYSYMBOL_Expr = 12                       /* Expr  */
 };
 typedef enum yysymbol_kind_t yysymbol_kind_t;
 
@@ -518,19 +522,19 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  6
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   5
+#define YYLAST   22
 
 /* YYNTOKENS -- Number of terminals.  */
-#define YYNTOKENS  5
+#define YYNTOKENS  10
 /* YYNNTS -- Number of nonterminals.  */
 #define YYNNTS  3
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  4
+#define YYNRULES  8
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  8
+#define YYNSTATES  16
 
 /* YYMAXUTOK -- Last valid token kind.  */
-#define YYMAXUTOK   259
+#define YYMAXUTOK   258
 
 
 /* YYTRANSLATE(TOKEN-NUM) -- Symbol number corresponding to TOKEN-NUM
@@ -548,6 +552,7 @@ static const yytype_int8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       8,     9,     6,     4,     2,     5,     2,     7,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -568,15 +573,14 @@ static const yytype_int8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     1,     2,     3,     4
+       2,     2,     2,     2,     2,     2,     1,     2,     3
 };
 
 #if YYDEBUG
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int8 yyrline[] =
 {
-       0,    43,    43,    46,    47
+       0,    47,    47,    50,    51,    52,    53,    54,    55
 };
 #endif
 
@@ -592,8 +596,8 @@ static const char *yysymbol_name (yysymbol_kind_t yysymbol) YY_ATTRIBUTE_UNUSED;
    First, the terminals, then, starting at YYNTOKENS, nonterminals.  */
 static const char *const yytname[] =
 {
-  "\"end of file\"", "error", "\"invalid token\"", "NUM", "OP", "$accept",
-  "S", "Expr", YY_NULLPTR
+  "\"end of file\"", "error", "\"invalid token\"", "NUM", "'+'", "'-'",
+  "'*'", "'/'", "'('", "')'", "$accept", "S", "Expr", YY_NULLPTR
 };
 
 static const char *
@@ -603,7 +607,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#define YYPACT_NINF (-3)
+#define YYPACT_NINF (-4)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -617,7 +621,8 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
-       1,    -3,     1,     2,    -3,     1,    -3,    -3
+      10,    -4,    10,    17,    -3,     5,    -4,    10,    10,    10,
+      10,    -4,    14,     9,    15,    -4
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -625,13 +630,14 @@ static const yytype_int8 yypact[] =
    means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
-       0,     4,     0,     0,     2,     0,     1,     3
+       0,     8,     0,     0,     2,     0,     1,     0,     0,     0,
+       0,     7,     3,     4,     5,     6
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-      -3,    -3,    -2
+      -4,    -4,    -2
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
@@ -645,31 +651,36 @@ static const yytype_int8 yydefgoto[] =
    number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int8 yytable[] =
 {
-       5,     0,     6,     7,     1,     2
+       5,     7,     8,     9,    10,    12,    13,    14,    15,     7,
+       8,     9,    10,     1,    11,     9,    10,     6,     2,     8,
+       9,    10,    10
 };
 
 static const yytype_int8 yycheck[] =
 {
-       2,    -1,     0,     5,     3,     4
+       2,     4,     5,     6,     7,     7,     8,     9,    10,     4,
+       5,     6,     7,     3,     9,     6,     7,     0,     8,     5,
+       6,     7,     7
 };
 
 /* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
    state STATE-NUM.  */
 static const yytype_int8 yystos[] =
 {
-       0,     3,     4,     6,     7,     7,     0,     7
+       0,     3,     8,    11,    12,    12,     0,     4,     5,     6,
+       7,     9,    12,    12,    12,    12
 };
 
 /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr1[] =
 {
-       0,     5,     6,     7,     7
+       0,    10,    11,    12,    12,    12,    12,    12,    12
 };
 
 /* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
 static const yytype_int8 yyr2[] =
 {
-       0,     2,     1,     3,     1
+       0,     2,     1,     3,     3,     3,     3,     3,     1
 };
 
 
@@ -1133,25 +1144,49 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* S: Expr  */
-#line 43 "sub.y"
+#line 47 "main.y"
                 {root=(yyvsp[0].Npointer);}
-#line 1139 "y.tab.c"
+#line 1150 "y.tab.c"
     break;
 
-  case 3: /* Expr: OP Expr Expr  */
-#line 46 "sub.y"
-                        {(yyval.Npointer)=makeOperatorNode((yyvsp[-2].Char),(yyvsp[-1].Npointer),(yyvsp[0].Npointer));}
-#line 1145 "y.tab.c"
+  case 3: /* Expr: Expr '+' Expr  */
+#line 50 "main.y"
+                            {(yyval.Npointer)=makeOperatorNode('+',(yyvsp[-2].Npointer),(yyvsp[0].Npointer));}
+#line 1156 "y.tab.c"
     break;
 
-  case 4: /* Expr: NUM  */
-#line 47 "sub.y"
-                        {(yyval.Npointer)=makeLeafNode((yyvsp[0].Int));}
-#line 1151 "y.tab.c"
+  case 4: /* Expr: Expr '-' Expr  */
+#line 51 "main.y"
+                            {(yyval.Npointer)=makeOperatorNode('-',(yyvsp[-2].Npointer),(yyvsp[0].Npointer));}
+#line 1162 "y.tab.c"
+    break;
+
+  case 5: /* Expr: Expr '*' Expr  */
+#line 52 "main.y"
+                            {(yyval.Npointer)=makeOperatorNode('*',(yyvsp[-2].Npointer),(yyvsp[0].Npointer));}
+#line 1168 "y.tab.c"
+    break;
+
+  case 6: /* Expr: Expr '/' Expr  */
+#line 53 "main.y"
+                            {(yyval.Npointer)=makeOperatorNode('/',(yyvsp[-2].Npointer),(yyvsp[0].Npointer));}
+#line 1174 "y.tab.c"
+    break;
+
+  case 7: /* Expr: '(' Expr ')'  */
+#line 54 "main.y"
+                            {(yyval.Npointer)=(yyvsp[-1].Npointer);}
+#line 1180 "y.tab.c"
+    break;
+
+  case 8: /* Expr: NUM  */
+#line 55 "main.y"
+                            {(yyval.Npointer)=makeLeafNode((yyvsp[0].Int));}
+#line 1186 "y.tab.c"
     break;
 
 
-#line 1155 "y.tab.c"
+#line 1190 "y.tab.c"
 
       default: break;
     }
@@ -1344,7 +1379,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 50 "sub.y"
+#line 58 "main.y"
 
 
 int main(){
@@ -1355,7 +1390,7 @@ int main(){
     fprintf(outFile,"\n");
     genWriteCode(reg);
     printTree(root);
-    printf("Run\n./xsm -l library.lib -e <Relative_path_to_xsm_file> --debug");
+    /* printf("Run\n./xsm -l library.lib -e <Relative_path_to_xsm_file> --debug"); */
 }
 
 void genWriteCode(int Wreg){
@@ -1455,6 +1490,6 @@ void freeReg(){
     if(currReg>0) currReg--;
 }
 
-yyerror(char *s){
+void yyerror(char *s){
     printf("%s\n",s);
 }

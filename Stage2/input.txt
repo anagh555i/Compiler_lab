@@ -1,0 +1,6 @@
+begin
+    a=34;
+    b=56;
+    read(c);
+    write(a+b+c);
+end

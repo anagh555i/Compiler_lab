@@ -81,7 +81,12 @@
         struct node* right;
     }node;
 
+    extern FILE *yyin;
+    extern void yyerror(char* s);
+    extern int yylex();
+
     node* root;
+    int variables[26];
 
     node* makeNode(int val,int type,char varname,int nodeType,node* left,node* right);
     //makeNode(val,type,varname,nodeType,left,right);
@@ -116,7 +121,7 @@
     int space=0;
     void printTree(node* root);
 
-#line 120 "y.tab.c"
+#line 125 "y.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -185,13 +190,13 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 51 "main.y"
+#line 56 "main.y"
 
     int Int;
     char Char;
     struct node* nodePtr;
 
-#line 195 "y.tab.c"
+#line 200 "y.tab.c"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -622,8 +627,8 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int8 yyrline[] =
 {
-       0,    79,    79,    80,    82,    83,    85,    86,    87,    89,
-      94,    96,   101,   102,   103,   104,   105,   106,   107
+       0,    84,    84,    85,    87,    88,    90,    91,    92,    94,
+      99,   101,   106,   107,   108,   109,   110,   111,   112
 };
 #endif
 
@@ -1201,117 +1206,117 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* Program: begin Slist end  */
-#line 79 "main.y"
+#line 84 "main.y"
                                     {root=(yyvsp[-1].nodePtr);}
-#line 1207 "y.tab.c"
+#line 1212 "y.tab.c"
     break;
 
   case 3: /* Program: begin end  */
-#line 80 "main.y"
+#line 85 "main.y"
                                     {root=NULL;}
-#line 1213 "y.tab.c"
+#line 1218 "y.tab.c"
     break;
 
   case 4: /* Slist: Slist Stmt  */
-#line 82 "main.y"
+#line 87 "main.y"
                                     {(yyval.nodePtr)=makeNode(0,0,' ',0,(yyvsp[-1].nodePtr),(yyvsp[0].nodePtr));}
-#line 1219 "y.tab.c"
+#line 1224 "y.tab.c"
     break;
 
   case 5: /* Slist: Stmt  */
-#line 83 "main.y"
+#line 88 "main.y"
                                     {(yyval.nodePtr)=(yyvsp[0].nodePtr);}
-#line 1225 "y.tab.c"
+#line 1230 "y.tab.c"
     break;
 
   case 6: /* Stmt: InputStmt ';'  */
-#line 85 "main.y"
+#line 90 "main.y"
                                     {(yyval.nodePtr)=(yyvsp[-1].nodePtr);}
-#line 1231 "y.tab.c"
+#line 1236 "y.tab.c"
     break;
 
   case 7: /* Stmt: OutputStmt ';'  */
-#line 86 "main.y"
+#line 91 "main.y"
                                     {(yyval.nodePtr)=(yyvsp[-1].nodePtr);}
-#line 1237 "y.tab.c"
+#line 1242 "y.tab.c"
     break;
 
   case 8: /* Stmt: AssgStmt ';'  */
-#line 87 "main.y"
+#line 92 "main.y"
                                     {(yyval.nodePtr)=(yyvsp[-1].nodePtr);}
-#line 1243 "y.tab.c"
+#line 1248 "y.tab.c"
     break;
 
   case 9: /* InputStmt: READ '(' ID ')'  */
-#line 89 "main.y"
+#line 94 "main.y"
                                     {
                                     node* temp=makeNode(0,0,(yyvsp[-1].Char),2,NULL,NULL);
                                     (yyval.nodePtr)=makeNode(0,0,' ',3,temp,temp);
                                     }
-#line 1252 "y.tab.c"
+#line 1257 "y.tab.c"
     break;
 
   case 10: /* OutputStmt: WRITE '(' Expr ')'  */
-#line 94 "main.y"
+#line 99 "main.y"
                                     {(yyval.nodePtr)=makeNode(0,0,' ',4,(yyvsp[-1].nodePtr),(yyvsp[-1].nodePtr));}
-#line 1258 "y.tab.c"
+#line 1263 "y.tab.c"
     break;
 
   case 11: /* AssgStmt: ID '=' Expr  */
-#line 96 "main.y"
+#line 101 "main.y"
                                     {
                                     node* temp=makeNode(0,0,(yyvsp[-2].Char),2,NULL,NULL);
                                     (yyval.nodePtr)=makeNode(0,0,' ',9,temp,(yyvsp[0].nodePtr));
                                     }
-#line 1267 "y.tab.c"
+#line 1272 "y.tab.c"
     break;
 
   case 12: /* Expr: Expr '+' Expr  */
-#line 101 "main.y"
+#line 106 "main.y"
                                     {(yyval.nodePtr)=makeNode(0,0,' ',5,(yyvsp[-2].nodePtr),(yyvsp[0].nodePtr));}
-#line 1273 "y.tab.c"
+#line 1278 "y.tab.c"
     break;
 
   case 13: /* Expr: Expr '-' Expr  */
-#line 102 "main.y"
+#line 107 "main.y"
                                     {(yyval.nodePtr)=makeNode(0,0,' ',6,(yyvsp[-2].nodePtr),(yyvsp[0].nodePtr));}
-#line 1279 "y.tab.c"
+#line 1284 "y.tab.c"
     break;
 
   case 14: /* Expr: Expr '*' Expr  */
-#line 103 "main.y"
+#line 108 "main.y"
                                     {(yyval.nodePtr)=makeNode(0,0,' ',7,(yyvsp[-2].nodePtr),(yyvsp[0].nodePtr));}
-#line 1285 "y.tab.c"
+#line 1290 "y.tab.c"
     break;
 
   case 15: /* Expr: Expr '/' Expr  */
-#line 104 "main.y"
+#line 109 "main.y"
                                     {(yyval.nodePtr)=makeNode(0,0,' ',8,(yyvsp[-2].nodePtr),(yyvsp[0].nodePtr));}
-#line 1291 "y.tab.c"
+#line 1296 "y.tab.c"
     break;
 
   case 16: /* Expr: '(' Expr ')'  */
-#line 105 "main.y"
+#line 110 "main.y"
                                     {(yyval.nodePtr)=(yyvsp[-1].nodePtr);}
-#line 1297 "y.tab.c"
+#line 1302 "y.tab.c"
     break;
 
   case 17: /* Expr: NUM  */
-#line 106 "main.y"
+#line 111 "main.y"
                                     {(yyval.nodePtr)=makeNode((yyvsp[0].Int),0,' ',1,NULL,NULL);}
-#line 1303 "y.tab.c"
+#line 1308 "y.tab.c"
     break;
 
   case 18: /* Expr: ID  */
-#line 107 "main.y"
+#line 112 "main.y"
                                     {
                                     (yyval.nodePtr)=makeNode(0,0,(yyvsp[0].Char),2,NULL,NULL);
                                     }
-#line 1311 "y.tab.c"
+#line 1316 "y.tab.c"
     break;
 
 
-#line 1315 "y.tab.c"
+#line 1320 "y.tab.c"
 
       default: break;
     }
@@ -1504,19 +1509,79 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 112 "main.y"
+#line 117 "main.y"
 
 
 int main(){
+    FILE *fp=fopen("input.txt","r");
+    yyin=fp;
     yyparse();
-    outFile=fopen("a.xsm","w");
     printTree(root);
+
+    for(int i=0;i<26;i++) variables[i]=0;
+    evaluator(root);
+    return 0;
+
+    outFile=fopen("a.xsm","w");
     currReg=0;
 
     genHeader();
     genVarSpaceCode();
     int reg=genCode(root);
     genExit();
+}
+
+int evaluator(node* root){
+    int i;
+    switch(root->nodeType){
+        case 0: //connector
+        printf("conn\n");
+            evaluator(root->left);
+            evaluator(root->right);
+            return 100; // junk
+        break;
+        case 1: //constants
+        printf("const\n");
+            return root->val;
+        break;
+        case 2: //Variable
+        printf("var\n");
+            return variables[*(root->varname)-'a'];
+        break;
+        case 3: //Read
+        printf("read\n");
+            i=*(root->left->varname) - 'a';
+            scanf("%d",&variables[i]);
+            return 100;//junk value
+        break;
+        case 4: //Write
+        printf("write\n");
+            i=evaluator(root->left);
+            printf("%d\n",i);
+        break;
+        case 9: //=
+        printf("=\n");
+            i=*(root->left->varname) - 'a';
+            variables[i]=evaluator(root->right);
+            return 100;// junk
+        break;
+        case 5: //+
+        printf("+\n");
+            return evaluator(root->left) + evaluator(root->right);
+        break;
+        case 6: //-
+        printf("-\n");
+            return evaluator(root->left) - evaluator(root->right);
+        break;
+        case 7: //*
+        printf("*\n");
+            return evaluator(root->left) * evaluator(root->right);
+        break;
+        case 8: // /
+        printf("/\n");
+            return evaluator(root->left) / evaluator(root->right);
+        break;
+    }
 }
 
 int genCode(node* root){
@@ -1669,7 +1734,7 @@ node* makeNode(int val,int type,char varname,int nodeType,node* left,node* right
     return ptr;
 }
 
-yyerror(char* s){
+void yyerror(char* s){
     printf("%s\n",s);
 }
 

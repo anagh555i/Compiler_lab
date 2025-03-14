@@ -1,0 +1,22 @@
+decl
+    int n,i,dec;
+enddecl
+begin
+    write("Enter number:");
+    read(n);
+    i=2;
+    dec=0;
+    while(i<n){
+        if((n%i)==0){
+            dec=1;
+            break;
+        }
+        i=i+1;
+    }
+    if(dec==0) {
+        write("Prime");
+    }
+    else{
+        write("Not Prime");
+    }
+end

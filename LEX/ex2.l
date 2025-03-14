@@ -3,14 +3,20 @@
     int integers=0,floats=0;
 %}
 
-%%
-
-[0-9]+  {printf("%s\n",yytext);integers++;}
-[0-9]+[.][0-9]+ {floats++;}
+num [0-9]+
 
 %%
 
-int main(){
+{num}  {printf("%s\n",yytext);integers++;}
+{num}[.]{num} {floats++;}
+.   {;}
+
+%%
+
+int main(const char* args[]){
+    printf("%s\n",args[0]);
+    FILE *fp=fopen(args[0],"r");
+    yyin=fp;
     yylex();
     printf("Integers:%d\nFloats:%d\n",integers,floats);
 }
