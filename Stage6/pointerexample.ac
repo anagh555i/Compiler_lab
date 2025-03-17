@@ -1,0 +1,28 @@
+decl
+    int i,j,n;
+    int arr[10];
+    int k;
+    string s;
+    int funct(int* a);
+enddecl
+
+int funct(int* a){
+    decl
+    enddecl
+    begin
+        *a=200;
+        return 0;
+    end
+}
+
+void main(){
+    decl 
+        int i;
+    enddecl
+    begin
+        i=10;
+        j=funct(&i);
+        write(i);
+        return ;
+    end
+}

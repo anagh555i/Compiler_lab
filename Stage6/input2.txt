@@ -1,0 +1,13 @@
+decl
+    int i;
+    int *j;
+    int arr[10];
+    int k;
+    string s;
+enddecl
+begin
+    i=8;
+    k=5;
+    i=i%k;
+    write(i);
+end
