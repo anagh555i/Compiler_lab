@@ -23,7 +23,7 @@ int funct3(int c){
     decl
     enddecl
     begin
-        c=funct1(20);
+        c=c+1;
         return c;
     end
 }
@@ -32,7 +32,7 @@ void main(){
     decl 
     enddecl
     begin
-        i=funct3(20) +funct3(59);
+        i=funct3(funct3(funct3(1)));
         write(i);
         return ;
     end

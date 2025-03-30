@@ -420,7 +420,7 @@ ArgList : ArgList',' Expr   {   // argument list will be linked with center poin
 %%
 
 int main(){
-    FILE *fp=fopen("pointerexample.ac","r");
+    FILE *fp=fopen("input.ac","r");
     yyin=fp;
     SP=4096;
     yyparse();
