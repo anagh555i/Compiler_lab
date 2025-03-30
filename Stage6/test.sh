@@ -12,5 +12,5 @@ gcc lex.yy.c
 curr=${pwd}
 
 cd /home/anagh/PROGRAMMING/xsm_expl/xsm_expl
-./xsm -l library.lib -e ../../Compiler_lab/Stage5/a.xsm --debug
+./xsm -l library.lib -e ../../Compiler_lab/Stage6/a.xsm --debug
 cd "$curr"

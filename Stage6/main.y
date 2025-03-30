@@ -16,11 +16,22 @@
     bool isArithmetic(node* left, node* right);
     bool isBoolean(node* left, node* right);
     void prerequisites();
+    void installDefaultTypes();
+    void printTypes();
 
     node* root;          // AST root;
     Gsymbol* Ghead=NULL; // global symbol table head
     Lsymbol* Lhead=NULL; // global symbol table head
     Gsymbol* currFunction=NULL; // current function global symbol entry which is used in codeGen();
+    Typetable* Types=NULL; // type table for the program;
+    Fieldlist* Fields=NULL; // field list for the program;
+
+    Typetable* POINTERTYPE=NULL;
+    Typetable* VOIDTYPE=NULL;
+    Typetable* INTTYPE=NULL;
+    Typetable* STRINGTYPE=NULL;
+    Typetable* ARRAYTYPE=NULL;
+    Typetable* BOOLTYPE=NULL;
 
     FILE* outFile;
     int currReg;
@@ -43,6 +54,9 @@
     struct node* nodePtr;
     char* String;
     struct Lnode* listPtr;
+    struct Fieldlist* fieldPtr;
+    struct Typetable* typePtr;
+    struct typeCapsule* typeCapsule;
 }
 %token begin
 %token end
@@ -62,12 +76,17 @@
 %token CONTINUE
 %token REPEAT
 %token UNTIL
-%token INT
-%token STR
+/* %token INT
+%token STR */
 %token VOID
 %token DECL
 %token ENDDECL 
 %token RETURN
+%token TYPE
+%token ENDTYPE
+%token MALLOC
+%token ARROW
+%token Null
 
 %token <Int> NUM
 %token <String> ID
@@ -92,16 +111,21 @@
 %type <nodePtr> GDecList
 %type <listPtr> ArrList
 %type <nodePtr> Array
+%type <nodePtr> Var
 
 %type <listPtr> ParamList
 %type <listPtr> Param
 
-%type <Int> Type
+/* %type <Int> Type */
+%type <typePtr> VarType
 
 %type <nodePtr> FDefBlock
 %type <nodePtr> Fdef
 
 %type <listPtr> IdList
+%type <fieldPtr> Field
+%type <fieldPtr> FieldList
+
 
 %left OR
 %left AND
@@ -120,65 +144,115 @@
 
 %%
 
-sourceCode      :   GDelcarations FDefBlock MainBlock {}
-                |   GDelcarations MainBlock {}   
+sourceCode      :   TypeDeclarations GDelcarations FDefBlock MainBlock {}
+                |   TypeDeclarations GDelcarations MainBlock {}   
                 ;
+
+TypeDeclarations    :   TYPE Typedefs ENDTYPE   {printTypes(); }
+                    |   TYPE ENDTYPE
+                    ;
+Typedefs            :   Typedefs Typedef
+                    |   Typedef
+                    ;
+Typedef             :   ID '{' FieldList '}'    {   
+                                                    if(lookUpType($1)) yyerror("Type already defined");
+                                                    InstallType($1,0,NULL);
+                                                    Fieldlist* ptr=$3;
+                                                    int size=0;
+                                                    for(;ptr;ptr=ptr->next){
+                                                        Typetable *type=lookUpType(ptr->type->name);
+                                                        printf("---- %s %s\n",ptr->name,ptr->type->name);
+                                                        if(type==NULL) yyerror("Undefined Type");
+                                                        ptr->fieldIndex=size;
+                                                        size+=type->size;
+                                                        ptr->type=type;
+                                                        if(type==POINTERTYPE){
+                                                            Typetable *ptrType=lookUpType(ptr->ptrType->name);
+                                                            ptr->ptrType=ptrType;
+                                                        }
+                                                    }
+                                                    Types->size=size;
+                                                    Types->fields=$3;
+                                                }
+                    ;
+FieldList           :   Field FieldList         {$1->next=$2; $$=$1;}
+                    |   Field                   {$$=$1;}
+                    ;                
+Field               :   ID ID ';'               {
+                                                    // don't do type checking yet, do it in Typedef
+                                                    $$=makeField($2,0,makeTypeNode($1),NULL);
+                                                }
+                    |   ID '*' ID ';'           {
+                                                    // don't do type checking yet, do it in Typedef
+                                                    $$=makeField($3,0,makeTypeNode(strdup("pointer")),NULL);
+                                                    $$->ptrType=makeTypeNode($1);
+                                                }
+                    ;
 
 GDelcarations   :       DECL GDecList ENDDECL    {}
                 |       DECL ENDDECL            {}
                 ;
-GDecList        :       GDecList GDecl            {}
+GDecList        :       GDecl GDecList            {}
                 |       GDecl                    {}
                 ;
 ArrList         :       '[' NUM ']' ArrList     {$$=makeLnode("",$2,$4);} // returns linear chain of dimension
                 |       '[' NUM ']'             {$$=makeLnode("",$2,NULL);}
                 ;
-GDecl           :       Type VarList ';'         {
+GDecl           :       VarType VarList ';'         {
                                                   Lnode* ptr=$2;
+                                                  if($1->size<1) yyerror("Type cannot be declared");
                                                   for(;ptr;ptr=ptr->next){
                                                     if(lookUpG(ptr->s)){
                                                         yyerror("Variable already Declared");
                                                         exit(0);
                                                     }
-                                                    if(ptr->num==valtype) installG(ptr->s,$1,1,SP++);
+                                                    if(ptr->num==valtype){
+                                                        installG(ptr->s,$1,$1->size,SP);
+                                                        SP+=($1->size);
+                                                    }
                                                     else{
-                                                        int type;
-                                                        if($1==inttype) type=intptrtype;
-                                                        else if($1==strtype) type=strptrtype;
-                                                        else yyerror("forbidden type for pointer ");
-                                                        installG(ptr->s,type,1,SP++);
+                                                        installG(ptr->s,POINTERTYPE,1,SP++); // Pointer is of size 1
+                                                        Ghead->ptrType=$1;
                                                     }
                                                   }
                                                 }
-                |       Type ID ArrList';'       {
+                |       VarType ID ArrList';'       {
+                                                    if($1->size<1) yyerror("Type cannot be declared");
                                                     if(lookUpG($2)) yyerror("variable already declared");
                                                     int dim=0;
-                                                    int size=1;
+                                                    int size=$1->size;
                                                     Lnode* ptr=$3;
                                                     for(;ptr;ptr=ptr->next){
                                                         dim++;
                                                         size*=ptr->num;
                                                     }
                                                     printf("SIZE OF ARRAY IS %d\n",size);
-                                                    int type;
-                                                    if($1==inttype) type=intarrtype;
-                                                    else if($1==strtype) type=strarrtype;
-                                                    else yyerror("forbidden array type");
-                                                    installG($2,type,size,SP);
+                                                    installG($2,ARRAYTYPE,size,SP);
                                                     SP+=size;
-                                                    Gsymbol* g=lookUpG($2);
-                                                    g->dim=makeLnode("",dim,$3);
+                                                    // Gsymbol* g=lookUpG($2);
+                                                    Ghead->dim=makeLnode("",dim,$3);
+                                                    Ghead->ptrType=$1;
                                                 }
-                |       Type ID '(' ParamList ')'';'    {
+                |       VarType ID '(' ParamList ')'';'    {
                                                             if(lookUpG($2)) yyerror("variable already declared");
+                                                            if($1->size>1) yyerror("return type of size>1 not yet possible");
                                                             installG($2,$1,0,0);
                                                             Ghead->flabel=flabel++; // assign label and mark variable as function 
                                                             Ghead->paramlist=Lhead;
                                                             Lhead=NULL; // clear Lhead for other parameters
                                                         }
+                |       VarType'*' ID '(' ParamList ')'';'  {
+                                                            if($1->size<1) yyerror("pointer of Type cannot be declared");
+                                                            if(lookUpG($3)) yyerror("variable already declared");
+                                                            installG($3,POINTERTYPE,0,0);
+                                                            Ghead->ptrType=$1;
+                                                            Ghead->flabel=flabel++; // assign label and mark variable as function 
+                                                            Ghead->paramlist=Lhead;
+                                                            Lhead=NULL; // clear Lhead for other parameters
+                                                        }
                 ;
-VarList         :       VarList ',' ID          {$$=makeLnode($3,valtype,$1);}
-                |       VarList ',' '*'ID       {$$=makeLnode($4,ptrtype,$1);} // list num stores type of variable
+VarList         :       ID ',' VarList          {$$=makeLnode($1,valtype,$3);}
+                |       '*'ID ',' VarList       {$$=makeLnode($2,ptrtype,$4);} // list num stores type of variable
                 |       ID                      {$$=makeLnode($1,valtype,NULL);}
                 |       '*'ID                   {$$=makeLnode($2,ptrtype,NULL);} 
                 ;
@@ -187,27 +261,37 @@ ParamList   : Param ',' ParamList   {}
             | Param                 {}
             |/*param can be empty*/ {}
             ;
-Param       : Type ID               {   printf("Type type=%d\n",$1);
-                                        if($1 != inttype && $1!=strtype && $1!=intptrtype && $1!=strptrtype) yyerror("forbidden type for paramteres");
+Param       : VarType ID            {   //printf("Type type=%d\n",$1);
+                                        // if($1 != inttype && $1!=strtype && $1!=intptrtype && $1!=strptrtype) yyerror("forbidden type for paramteres");
+                                        if($1->size<1) yyerror("Type cannot be declared");
                                         if(lookUpL($2)) yyerror("duplicate parameter");
-                                        installL($2,$1,-1); // add parameter to Lhead 
+                                        installL($2,$1,NULL,-1); // add parameter to Lhead 
+                                    } 
+            | VarType '*' ID        {   //printf("Type type=%d\n",$1);
+                                        if($1->size<1) yyerror("Pointer Type cannot be declared");
+                                        if(lookUpL($3)) yyerror("duplicate parameter");
+                                        installL($3,POINTERTYPE,$1,-1); // add parameter to Lhead 
                                     } 
             ;
 
-Type        : INT   {$$=inttype;}
-            | STR   {$$=strtype;}
-            | VOID  {$$=voidtype;}
-            | INT '*'  {$$=intptrtype;}
-            | STR '*'  {$$=strptrtype;}
+VarType     : ID        {
+                            Typetable* type=lookUpType($1);
+                            if(type==NULL) yyerror("undefined type");
+                            $$=type;
+                        }
+            | VOID      {
+                            $$=VOIDTYPE;
+                        }
             ;
 
-FDefBlock   : FDefBlock Fdef
+FDefBlock   : FDefBlock Fdef 
             | Fdef
             ;
 
-Fdef        : Type ID '(' ParamList ')''{' LdeclBlock Body '}'  {/*iterate through paramlist and Lhead and check correctness and assign relative binding*/
+Fdef        : VarType ID '(' ParamList ')''{' LdeclBlock Body '}'  {/*iterate through paramlist and Lhead and check correctness and assign relative binding*/
                                                                     Gsymbol* funct=lookUpG($2);
                                                                     if(!funct || funct->flabel==-1) yyerror("undeclared function");
+                                                                    if(funct->type!=$1) yyerror("type mismatch in funciton decl and def");
                                                                     Lsymbol* ptr;
                                                                     int offset=-3;
                                                                     ptr=funct->paramlist;
@@ -229,11 +313,37 @@ Fdef        : Type ID '(' ParamList ')''{' LdeclBlock Body '}'  {/*iterate throu
                                                                     installFunction(makeNode(0,funct->type,funct,funct->paramlist,tFUNCT,NULL,$8,NULL)); //->right points to function definition and left to next function 
                                                                     Lhead=NULL;
                                                                 }
+            | VarType '*' ID '(' ParamList ')''{' LdeclBlock Body '}'  {/*iterate through paramlist and Lhead and check correctness and assign relative binding*/
+                                                                    if($1->size<1) yyerror("pointer of Type cannot be declared");
+                                                                    Gsymbol* funct=lookUpG($3);
+                                                                    if(!funct || funct->flabel==-1) yyerror("undeclared function");
+                                                                    if(funct->type!=POINTERTYPE) yyerror("type mismatch in funciton decl and def");
+                                                                    Lsymbol* ptr;
+                                                                    int offset=-3;
+                                                                    ptr=funct->paramlist;
+                                                                    funct->paramlist=Lhead;
+                                                                    for(;ptr && Lhead;ptr=ptr->next){
+                                                                        if(ptr->type!=Lhead->type) yyerror("conflicting function declaration and definition");
+                                                                        if(strcmp(ptr->name,Lhead->name)!=0)yyerror("conflicting function declaration and definition");
+                                                                        Lhead->binding=offset--;
+                                                                        Lhead=Lhead->next;
+                                                                    }
+                                                                    // original funct->paramlist from declaration is not used anymore, maybe used for future polymorphism implementations
+                                                                    // funct->paramlist already contains all the parameters and local declarations
+                                                                    // now the rest of Lhead is local variables
+                                                                    offset=1;
+                                                                    funct->fsymbols=Lhead;
+                                                                    for(;Lhead;Lhead=Lhead->next){
+                                                                        Lhead->binding=offset++;
+                                                                    }
+                                                                    installFunction(makeNode(0,funct->type,funct,funct->paramlist,tFUNCT,NULL,$9,NULL)); //->right points to function definition and left to next function 
+                                                                    Lhead=NULL;
+                                                                }
             ;
 
 MainBlock        : VOID MAIN '('')''{' LdeclBlock Body '}'  {
                                                                 if(lookUpG($2)) yyerror("only one main function allowed");
-                                                                installG($2,voidtype,0,0);
+                                                                installG($2,VOIDTYPE,0,0);
                                                                 Ghead->flabel=0; // assign label and mark variable as function 
                                                                 Ghead->paramlist=Lhead;
                                                                 Ghead->fsymbols=Lhead;
@@ -241,35 +351,42 @@ MainBlock        : VOID MAIN '('')''{' LdeclBlock Body '}'  {
                                                                 for(;Lhead;Lhead=Lhead->next){
                                                                     Lhead->binding=offset++;
                                                                 }
-                                                                installFunction(makeNode(0,voidtype,Ghead,Ghead->paramlist,tFUNCT,NULL,$7,NULL));
+                                                                installFunction(makeNode(0,VOIDTYPE,Ghead,Ghead->paramlist,tFUNCT,NULL,$7,NULL));
                                                                 Lhead=NULL;
                                                             }
             ;
-//type mismatch
 LdeclBlock  : DECL LDecList ENDDECL 
             | DECL ENDDECL
             | //no declarations
             ;
-LDecList    : LDecList LDecl 
+LDecList    : LDecl LDecList  
             | LDecl
             ;
-LDecl       : Type IdList ';'   {
+LDecl       : VarType IdList ';'   {
                                     Lnode* ptr=$2;
+                                    if($1->size<1) yyerror("Type cannot be declared");
                                     for(;ptr;ptr=ptr->next){
                                         if(lookUpL(ptr->s)) yyerror("variable already declared");
-                                        installL(ptr->s,$1,-1);
+                                        if(ptr->num == valtype){
+                                            installL(ptr->s,$1,NULL,-1);
+                                        }
+                                        else{
+                                            installL(ptr->s,POINTERTYPE,$1,-1);
+                                        }
                                     }
                                 }
             ;
 IdList      : ID ',' IdList     {$$=makeLnode($1,valtype,$3);}
+            | '*' ID ',' IdList {$$=makeLnode($2,ptrtype,$4);}
             | ID                {$$=makeLnode($1,valtype,NULL);}
+            | '*' ID            {$$=makeLnode($2,ptrtype,NULL);}
             ;
 
 
-Body    :   begin Slist  ReturnStmt ';' end     {$$=makeNode(0,0,NULL,NULL,tCONNECT,$2,$3,NULL);}
+Body    :   begin Slist  ReturnStmt ';' end     {$$=makeNode(0,NULL,NULL,NULL,tCONNECT,$2,$3,NULL);}
         |   begin ReturnStmt ';' end            {$$=$2;}
         ;
-Slist   :   Slist Stmt              {$$=makeNode(0,0,NULL,NULL,tCONNECT,$1,$2,NULL);}
+Slist   :   Slist Stmt              {$$=makeNode(0,NULL,NULL,NULL,tCONNECT,$1,$2,NULL);}
         |   Stmt                    {$$=$1;}
         ;
 Stmt    :   InputStmt ';'           {$$=$1;}
@@ -278,56 +395,52 @@ Stmt    :   InputStmt ';'           {$$=$1;}
         |   ReturnStmt ';'          {$$=$1;}
         |   Ifstmt                  {$$=$1;}
         |   LoopStmt                {$$=$1;}
-        |   BREAK ';'               {$$=makeNode(0,0,NULL,NULL,tBREAK,NULL,NULL,NULL);}
-        |   CONTINUE ';'            {$$=makeNode(0,0,NULL,NULL,tCONTINUE,NULL,NULL,NULL);}
+        |   BREAK ';'               {$$=makeNode(0,NULL,NULL,NULL,tBREAK,NULL,NULL,NULL);}
+        |   CONTINUE ';'            {$$=makeNode(0,NULL,NULL,NULL,tCONTINUE,NULL,NULL,NULL);}
         ;
-ReturnStmt  :   RETURN Expr         {$$=makeNode(0,0,NULL,NULL,tRETURN,$2,$2,$2);} // do semantic analysis while codeGen
-            |   RETURN              {$$=makeNode(0,0,NULL,NULL,tRETURN,NULL,NULL,NULL);} // null means void return 
+ReturnStmt  :   RETURN Expr         {$$=makeNode(0,NULL,NULL,NULL,tRETURN,$2,$2,$2);} // do semantic analysis while codeGen
+            |   RETURN              {$$=makeNode(0,NULL,NULL,NULL,tRETURN,NULL,NULL,NULL);} // null means void return 
             ;
-LoopStmt    :   WHILE '(' Expr ')' '{' Slist '}'    {if(isBoolean($3,$3)) $$=makeNode(0,0,NULL,NULL,tWHILE,$6,$6,$3);}
-            |   DO '{' Slist '}' WHILE '(' Expr ')'             {if(isBoolean($7,$7)) $$=makeNode(0,0,NULL,NULL,tDOWHILE,$3,$3,$7);}
-            |   REPEAT '{' Slist '}' UNTIL '(' Expr ')'             {if(isBoolean($7,$7)) $$=makeNode(0,0,NULL,NULL,tREPEATUNTIL,$3,$3,$7);}
+LoopStmt    :   WHILE '(' Expr ')' '{' Slist '}'    {if(isBoolean($3,$3)) $$=makeNode(0,NULL,NULL,NULL,tWHILE,$6,$6,$3);}
+            |   DO '{' Slist '}' WHILE '(' Expr ')'             {if(isBoolean($7,$7)) $$=makeNode(0,NULL,NULL,NULL,tDOWHILE,$3,$3,$7);}
+            |   REPEAT '{' Slist '}' UNTIL '(' Expr ')'             {if(isBoolean($7,$7)) $$=makeNode(0,NULL,NULL,NULL,tREPEATUNTIL,$3,$3,$7);}
             ;
-Ifstmt  :   IF '('Expr')' '{' Slist '}' Else '{' Slist '}'   {if(isBoolean($3,$3)) $$=makeNode(0,0,NULL,NULL,tIF,$6,$10,$3);}
-        |   IF '('Expr')' '{' Slist '}'             {if(isBoolean($3,$3)) $$=makeNode(0,0,NULL,NULL,tIF,$6,NULL,$3);}
+Ifstmt  :   IF '('Expr')' '{' Slist '}' Else '{' Slist '}'   {if(isBoolean($3,$3)) $$=makeNode(0,NULL,NULL,NULL,tIF,$6,$10,$3);}
+        |   IF '('Expr')' '{' Slist '}'             {if(isBoolean($3,$3)) $$=makeNode(0,NULL,NULL,NULL,tIF,$6,NULL,$3);}
         ;/* ;   center->condition, left->iftrue, right-> else */
-InputStmt   :   READ '(' ID ')'     {
+InputStmt   :   READ '(' ID ')'     { //////ADJUST FOR VAR
                                     Gsymbol* Gptr=lookUpG($3);
                                     Lsymbol* Lptr=lookUpL($3);
                                     if(Gptr==NULL && Lptr==NULL) yyerror("undeclared Variable");
-                                    node* temp=makeNode(0,0,Gptr,Lptr,tVAR,NULL,NULL,NULL);
-                                    $$=makeNode(0,0,NULL,NULL,tREAD,temp,temp,NULL);
+                                    node* temp=makeNode(0,NULL,Gptr,Lptr,tVAR,NULL,NULL,NULL);
+                                    $$=makeNode(0,NULL,NULL,NULL,tREAD,temp,temp,NULL);
                                     }
             ;
-OutputStmt  :   WRITE '(' Expr ')'  {$$=makeNode(0,0,NULL,NULL,tWRITE,$3,$3,NULL);}
+OutputStmt  :   WRITE '(' Expr ')'  {$$=makeNode(0,NULL,NULL,NULL,tWRITE,$3,$3,NULL);}
             ;
-AssgStmt    :   ID '=' Expr         {
-                                    Gsymbol* Gptr=lookUpG($1);
-                                    Lsymbol* Lptr=lookUpL($1);
-                                    if(Gptr==NULL && Lptr==NULL) yyerror("undelcared variable");
-                                    node* temp=makeNode(0,(Lptr?Lptr->type:Gptr->type),Gptr,Lptr,tVAR,NULL,NULL,NULL);
-                                    $$=makeNode(0,0,NULL,NULL,tASSIGN,temp,$3,NULL);
+AssgStmt    :   Var '=' Expr        {
+                                    printf("types: %s\n",$1->right->type->name);
+                                    printf("types: %s\n",$3->type->name);
+                                    if($1->right->type!=$3->type) yyerror("assignment type mismatch");
+                                    $$=makeNode(0,NULL,NULL,NULL,tASSIGN,$1,$3,NULL);
                                     }
-            |   '*'ID '=' Expr      {
-                                    Gsymbol* Gptr=lookUpG($2);
-                                    Lsymbol* Lptr=lookUpL($2);
-                                    if(Gptr==NULL && Lptr==NULL) yyerror("undelcared variable");
-                                    node* var=makeNode(0,(Lptr?Lptr->type:Gptr->type),Gptr,Lptr,tVAR,NULL,NULL,NULL); 
-                                    if(Lptr && Lptr->type==intptrtype)var=makeNode(0,inttype,NULL,NULL,tVALUEAT,var,var,var);
-                                    else if(Lptr && Lptr->type==strptrtype) var=makeNode(0,strtype,NULL,NULL,tVALUEAT,var,var,var);
-                                    else if(Gptr->type==intptrtype) var=makeNode(0,inttype,NULL,NULL,tVALUEAT,var,var,var);
-                                    else if(Gptr->type==strptrtype) var=makeNode(0,strtype,NULL,NULL,tVALUEAT,var,var,var);
-                                    else yyerror("type mismatch");
-                                    $$=makeNode(0,0,NULL,NULL,tASSIGN,var,$4,NULL);
+            |   '*'Var '=' Expr     {
+                                    if($2->right->type!=POINTERTYPE) yyerror("pointer assignment type mismatch");
+                                    if($2->right->ptrType!=$4->type) yyerror("Pointer type mismatch");
+                                    node* ptr=makeNode(0,NULL,NULL,NULL,tGETADDRATVAL,$2,NULL,NULL);
+                                    $$=makeNode(0,NULL,NULL,NULL,tASSIGN,ptr,$4,NULL);
                                     }
-            |   ID Array '=' Expr {
+            |   ID Array '=' Expr   {
                                         Gsymbol* ptr=lookUpG($1); // no need to look at local variable as array is only declared in global
                                         if(!ptr) yyerror("variable undeclared");
+                                        if(ptr->type!=ARRAYTYPE) yyerror("array access forbidden for variable");
+                                        if(ptr->ptrType!=$4->type) yyerror("assignment type mismatch");
                                         node* var=NULL;
-                                        if(ptr->type==intarrtype) var=makeNode(0,inttype,ptr,NULL,tARRVAL,$2,$2,$2);
-                                        else if(ptr->type==strarrtype) var=makeNode(0,strtype,ptr,NULL,tARRVAL,$2,$2,$2);
-                                        if(var->type!=$4->type) yyerror("type mismatch");
-                                        $$=makeNode(0,inttype,NULL,NULL,tASSIGN,var,$4,$4);
+                                        var=makeNode(0,ptr->ptrType,ptr,NULL,tARRADDR,$2,$2,$2);
+                                        // if(ptr->type==intarrtype) var=makeNode(0,inttype,ptr,NULL,tARRVAL,$2,$2,$2);
+                                        // else if(ptr->type==strarrtype) var=makeNode(0,strtype,ptr,NULL,tARRVAL,$2,$2,$2);
+                                        // if(var->type!=$4->type) yyerror("type mismatch");
+                                        $$=makeNode(0,NULL,NULL,NULL,tASSIGN,var,$4,$4);
                                     }
             ;
 Array   :       '[' Expr ']' Array     {if(isArithmetic($2,$2)){
@@ -338,19 +451,19 @@ Array   :       '[' Expr ']' Array     {if(isArithmetic($2,$2)){
         |       '[' Expr ']'           {if(isArithmetic($2,$2)) $$=$2;}
         ;
 
-Expr    :   Expr '+' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,inttype,NULL,NULL,tADD,$1,$3,NULL);}
-        |   Expr '-' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,inttype,NULL,NULL,tSUB,$1,$3,NULL);}
-        |   Expr '*' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,inttype,NULL,NULL,tMUL,$1,$3,NULL);}
-        |   Expr '/' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,inttype,NULL,NULL,tDIV,$1,$3,NULL);}
-        |   Expr '%' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,inttype,NULL,NULL,tMOD,$1,$3,NULL);}
-        |   Expr '>' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,booltype,NULL,NULL,tGT,$1,$3,NULL);} 
-        |   Expr '<' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,booltype,NULL,NULL,tLT,$1,$3,NULL);} 
-        |   Expr GE Expr            {if(isArithmetic($1,$3)) $$=makeNode(0,booltype,NULL,NULL,tGE,$1,$3,NULL);} 
-        |   Expr LE Expr            {if(isArithmetic($1,$3)) $$=makeNode(0,booltype,NULL,NULL,tLE,$1,$3,NULL);} 
-        |   Expr EQ Expr            {if(isArithmetic($1,$3)) $$=makeNode(0,booltype,NULL,NULL,tEQ,$1,$3,NULL);} 
-        |   Expr NEQ Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,booltype,NULL,NULL,tNEQ,$1,$3,NULL);} 
-        |   Expr AND Expr           {if(isBoolean($1,$3)) $$=makeNode(0,booltype,NULL,NULL,tAND,$1,$3,NULL);} 
-        |   Expr OR Expr            {if(isBoolean($1,$3)) $$=makeNode(0,booltype,NULL,NULL,tOR,$1,$3,NULL);} 
+Expr    :   Expr '+' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,INTTYPE,NULL,NULL,tADD,$1,$3,NULL);}
+        |   Expr '-' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,INTTYPE,NULL,NULL,tSUB,$1,$3,NULL);}
+        |   Expr '*' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,INTTYPE,NULL,NULL,tMUL,$1,$3,NULL);}
+        |   Expr '/' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,INTTYPE,NULL,NULL,tDIV,$1,$3,NULL);}
+        |   Expr '%' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,INTTYPE,NULL,NULL,tMOD,$1,$3,NULL);}
+        |   Expr '>' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,BOOLTYPE,NULL,NULL,tGT,$1,$3,NULL);} 
+        |   Expr '<' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,BOOLTYPE,NULL,NULL,tLT,$1,$3,NULL);} 
+        |   Expr GE Expr            {if(isArithmetic($1,$3)) $$=makeNode(0,BOOLTYPE,NULL,NULL,tGE,$1,$3,NULL);} 
+        |   Expr LE Expr            {if(isArithmetic($1,$3)) $$=makeNode(0,BOOLTYPE,NULL,NULL,tLE,$1,$3,NULL);} 
+        |   Expr EQ Expr            {if(isArithmetic($1,$3)) $$=makeNode(0,BOOLTYPE,NULL,NULL,tEQ,$1,$3,NULL);} 
+        |   Expr NEQ Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,BOOLTYPE,NULL,NULL,tNEQ,$1,$3,NULL);} 
+        |   Expr AND Expr           {if(isBoolean($1,$3)) $$=makeNode(0,BOOLTYPE,NULL,NULL,tAND,$1,$3,NULL);} 
+        |   Expr OR Expr            {if(isBoolean($1,$3)) $$=makeNode(0,BOOLTYPE,NULL,NULL,tOR,$1,$3,NULL);} 
         |   '(' Expr ')'            {$$=$2;}
         |   ID '(' ArgList ')'       {
                                         Gsymbol* fg=lookUpG($1);
@@ -358,7 +471,10 @@ Expr    :   Expr '+' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,intty
                                         node* ptr=$3;
                                         Lsymbol* ld=fg->paramlist;
                                         for(;ptr && ld;ld=ld->next,ptr=ptr->center){
-                                            if(ptr->type!=ld->type) yyerror("type mismatch");
+                                            if(ptr->type!=ld->type) {
+                                                printf("%s, %s %s\n",ptr->type->name,ld->name,ld->type->name);
+                                                yyerror("type mismatch");
+                                            }
                                         }
                                         if(ptr) yyerror("error in argument list");
                                         if(ld && ld->binding<0) yyerror("error in argument list");
@@ -371,46 +487,88 @@ Expr    :   Expr '+' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,intty
                                         if(ld && ld->binding<0) yyerror("error in argument list");
                                         $$=makeNode(0,fg->type,fg,NULL,tFUNCTCALL,NULL,NULL,NULL); //left contains argument list for function call
                                     }
-        |   NUM                     {$$=makeNode($1,inttype,NULL,NULL,tCONST,NULL,NULL,NULL);}
-        |   '-' NUM                 {$$=makeNode(-1*$2,inttype,NULL,NULL,tCONST,NULL,NULL,NULL);}
+        |   NUM                     {$$=makeNode($1,INTTYPE,NULL,NULL,tCONST,NULL,NULL,NULL);}
+        |   '-' NUM                 {$$=makeNode(-1*$2,INTTYPE,NULL,NULL,tCONST,NULL,NULL,NULL);}
         |   LITERAL                 {
                                      printf("STARTED parsing literal");
-                                     $$=makeNode(0,strtype,NULL,NULL,tLITERAL,NULL,NULL,NULL);
+                                     $$=makeNode(0,STRINGTYPE,NULL,NULL,tLITERAL,NULL,NULL,NULL);
                                      $$->literal=$1;
                                      printf("FINISHED parsing literal");
                                     }
-        |   ID                      {
-                                    printf("From expr %s\n",$1);
-                                    Gsymbol* Gptr=lookUpG($1);
-                                    Lsymbol* Lptr=lookUpL($1);
-                                    if(Lptr==NULL && Gptr==NULL) yyerror("undelcared variable");
-                                    $$=makeNode(0,(Lptr?Lptr->type:Gptr->type),Gptr,Lptr,tVAR,NULL,NULL,NULL);
+        |   Var                     {
+                                    $$=makeNode(0,$1->right->type,NULL,NULL,tGETVAL,$1,NULL,NULL);
+                                    $$->ptrType=$1->right->ptrType;
                                     }
-        |  '&' ID                   {
-                                    Gsymbol* Gptr=lookUpG($2);
-                                    Lsymbol* Lptr=lookUpL($2);
-                                    if(Lptr==NULL && Gptr==NULL) yyerror("undelcared variable");
-                                    node* var=makeNode(0,(Lptr?Lptr->type:Gptr->type),Gptr,Lptr,tVAR,NULL,NULL,NULL);
-                                    $$=makeNode(0,inttype,NULL,NULL,tADDRESSOF,var,var,NULL) ; // i don't see the point of address type, now we can do &var+1 and all
+        |  '&' Var                  {
+                                    $$=$2;
                                     }
-        |  '*' ID                   {
-                                    Gsymbol* Gptr=lookUpG($2);
-                                    Lsymbol* Lptr=lookUpL($2);
-                                    if(Gptr==NULL && Lptr==NULL) yyerror("undeclared variable");
-                                    node* var=makeNode(0,(Lptr?Lptr->type:Gptr->type),Gptr,Lptr,tVAR,NULL,NULL,NULL); 
-                                    if(Lptr && Lptr->type==intptrtype)$$=makeNode(0,inttype,NULL,NULL,tVALUEAT,var,var,var);
-                                    else if(Lptr && Lptr->type==strptrtype) $$=makeNode(0,strtype,NULL,NULL,tVALUEAT,var,var,var);
-                                    else if(Gptr->type==intptrtype)$$=makeNode(0,inttype,NULL,NULL,tVALUEAT,var,var,var);
-                                    else if(Gptr->type==strptrtype) $$=makeNode(0,strtype,NULL,NULL,tVALUEAT,var,var,var);
+        |  '*' Var                  {
+                                    if($2->right->type!=POINTERTYPE) yyerror("not pointer variable");
+                                    $$=makeNode(0,$2->right->ptrType,NULL,NULL,tVALUEAT,$2,NULL,NULL);
+            /////////////////////////////////////
+                                    // Gsymbol* Gptr=lookUpG($2);
+                                    // Lsymbol* Lptr=lookUpL($2);
+                                    // if(Gptr==NULL && Lptr==NULL) yyerror("undeclared variable");
+                                    // node* var=makeNode(0,(Lptr?Lptr->type:Gptr->type),Gptr,Lptr,tVAR,NULL,NULL,NULL); 
+                                    // if(Lptr && Lptr->type==intptrtype)$$=makeNode(0,inttype,NULL,NULL,tVALUEAT,var,var,var);
+                                    // else if(Lptr && Lptr->type==strptrtype) $$=makeNode(0,strtype,NULL,NULL,tVALUEAT,var,var,var);
+                                    // else if(Gptr->type==intptrtype)$$=makeNode(0,inttype,NULL,NULL,tVALUEAT,var,var,var);
+                                    // else if(Gptr->type==strptrtype) $$=makeNode(0,strtype,NULL,NULL,tVALUEAT,var,var,var);
                                     }
         |   ID Array            {
                                     Gsymbol* ptr=lookUpG($1);
                                     if(!ptr) yyerror("variable undeclared");
-                                    if(ptr->type==intarrtype) $$=makeNode(0,inttype,ptr,NULL,tARRVAL,$2,$2,$2);
-                                    else if(ptr->type==strarrtype) $$=makeNode(0,strtype,ptr,NULL,tARRVAL,$2,$2,$2);
+                                    if(ptr->type!=ARRAYTYPE) yyerror("type mismatch");
+                                    $$=makeNode(0,ptr->ptrType,ptr,NULL,tARRVAL,$2,$2,$2);
+                                }
+        |   MALLOC '(' VarType ')'  {
+                                        $$=makeNode(0,POINTERTYPE,NULL,NULL,tMALLOC,NULL,NULL,NULL);
+                                        $$->ptrType=$3;
+                                    }
+        |   Null                {
+                                    $$=makeNode(0,POINTERTYPE,NULL,NULL,tNULL,NULL,NULL,NULL);
                                 }
         ;
-ArgList : ArgList',' Expr   {   // argument list will be linked with center pointer
+Var     :   Var '.' ID      {
+                                printf("##\n");
+                                if($1->right->type==POINTERTYPE) yyerror("Static access from pointer variable");  
+                                printf("##\n");
+                                Fieldlist* field=LookupField($1->right->type,$3); 
+                                printf("##\n");
+                                if(field==NULL) yyerror("NO such field");  
+                                printf("##\n");
+                                node* var=makeNode(field->fieldIndex,field->type,NULL,NULL,tCONST,NULL,NULL,NULL); 
+                                printf("##\n");
+                                var->ptrType=field->ptrType; 
+                                printf("##\n");
+                                $$=makeNode(0,POINTERTYPE,NULL,NULL,tRECURSADDR,$1,var,NULL) ;                   
+                            }
+        |   Var ARROW ID   {
+                                printf("##\n");
+                                if($1->right->type!=POINTERTYPE) yyerror("pointer access from static type");
+                                printf("##\n");
+                                printf("x->%s type: %s\n",$3,$1->right->type->name);
+                                printf("%s\n",$1->right->ptrType->name);
+                                Fieldlist* field=LookupField($1->right->ptrType,$3);
+                                printf("field name: %s\n",field->name);
+                                if(field==NULL) yyerror("NO such field");
+                                node* var=makeNode(field->fieldIndex,field->type,NULL,NULL,tCONST,NULL,NULL,NULL);
+                                var->ptrType=field->ptrType;
+                                $$=makeNode(0,POINTERTYPE,NULL,NULL,tRECURSADDRATVAL,$1,var,NULL) ;
+                            }
+        |   ID              {
+                                printf("From expr %s\n",$1);
+                                Gsymbol* Gptr=lookUpG($1);
+                                Lsymbol* Lptr=lookUpL($1);
+                                if(Lptr==NULL && Gptr==NULL) yyerror("undelcared variable");
+                                node* var=makeNode(0,(Lptr?Lptr->type:Gptr->type),Gptr,Lptr,tVAR,NULL,NULL,NULL);
+                                var->ptrType=Lptr?Lptr->ptrType:Gptr->ptrType;
+                                $$=makeNode(0,POINTERTYPE,NULL,NULL,tADDRESSOF,var,var,NULL) ;
+                                $$->ptrType=Lptr?Lptr->type:Gptr->type;
+                            }
+        ;
+
+ArgList : Expr',' ArgList   {   // argument list will be linked with center pointer
                                 $1->center=$3;
                                 $$=$1;
                             }
@@ -420,16 +578,17 @@ ArgList : ArgList',' Expr   {   // argument list will be linked with center poin
 %%
 
 int main(){
-    FILE *fp=fopen("pointerexample.ac","r");
+    FILE *fp=fopen("ExtendedEuclidean.c","r");
+    outFile=fopen("a.xsm","w");
     yyin=fp;
     SP=4096;
+    installDefaultTypes();
     yyparse();
     Gsymbol* ptr=Ghead;
     if(!ptr) printf("What\n");
     for(;ptr;ptr=ptr->next)printf("%s ",ptr->name);
     printf("parsing complete\n");
 
-    outFile=fopen("a.xsm","w");
     space=0;
     /* printTree(root); */
 
@@ -450,16 +609,45 @@ int main(){
     }
     /* int reg=genCode(root); */
     printf("codeGen completed\n");
+    genSegmenationFault();
     genErrorHandler();
     genExit();
     return 0;
 }
 
+void printTypes(){
+    Typetable* ptr =Types;
+    for(;ptr!=NULL;ptr=ptr->next){
+        printf("\ntype: %s\n",ptr->name);
+        Fieldlist * f=ptr->fields;
+        for(;f!=NULL;f=f->next){
+            printf("%s ",f->name);
+        }
+    }
+}
+
 //fsymbol
 
 void yyerror(char* s){
+    printf("******************* Compilation error ******************\n");
     printf("%s\n",s);
+    printf("********************************************************\n");
     exit(0);
+}
+
+void installDefaultTypes(){
+    InstallType(strdup("void"),0,NULL);
+    VOIDTYPE=Types;
+    InstallType(strdup("int"),1,NULL);
+    INTTYPE=Types;
+    InstallType(strdup("string"),1,NULL);
+    STRINGTYPE=Types;
+    InstallType(strdup("pointer"),1,NULL);
+    POINTERTYPE=Types;
+    InstallType(strdup("array"),1,NULL);
+    ARRAYTYPE=Types;
+    InstallType(strdup("bool"),1,NULL);
+    ARRAYTYPE=Types;
 }
 
 void functionPreperation(Gsymbol *funct){
@@ -467,6 +655,7 @@ void functionPreperation(Gsymbol *funct){
     fprintf(outFile,"PUSH BP\n");
     fprintf(outFile,"MOV BP, SP\n");
     Lsymbol* lvar=funct->fsymbols;
+    fprintf(outFile,"MOV R0,0\n");
     for(;lvar;lvar=lvar->next) fprintf(outFile,"PUSH R0\n");
     printf("okay function prepared\n");
 }
@@ -479,6 +668,7 @@ void installFunction(node* f){
 void prerequisites(){
     fprintf(outFile,"MOV SP,%d\n",SP); // set stack pointer to after the declarations;
     fprintf(outFile,"MOV BP,%d\n",SP); // set base pointer to top of stack
+    initializeHeapSet();
     fprintf(outFile,"MAIN:\n");
     fprintf(outFile,"CALL F0!\n");
     fprintf(outFile,"JMP EXITCODE!\n");
@@ -489,7 +679,7 @@ bool isArithmetic(node* left, node* right){
         yyerror("syntax error");
         exit(0);
     }
-    if(left->type!= inttype || right->type!=inttype){
+    if(left->type!=right->type){
         yyerror("type mismatch");
         exit(0);
     }
@@ -500,7 +690,7 @@ bool isBoolean(node* left, node* right){
         yyerror("syntax error");
         exit(0);
     }
-    if(left->type!= booltype || right->type!=booltype){
+    if(left->type!= BOOLTYPE || right->type!=BOOLTYPE){
         yyerror("type mismatch");
         exit(0);
     }

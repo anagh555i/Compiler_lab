@@ -72,16 +72,19 @@ extern int yydebug;
     CONTINUE = 273,                /* CONTINUE  */
     REPEAT = 274,                  /* REPEAT  */
     UNTIL = 275,                   /* UNTIL  */
-    INT = 276,                     /* INT  */
-    STR = 277,                     /* STR  */
-    VOID = 278,                    /* VOID  */
-    DECL = 279,                    /* DECL  */
-    ENDDECL = 280,                 /* ENDDECL  */
-    RETURN = 281,                  /* RETURN  */
-    NUM = 282,                     /* NUM  */
-    ID = 283,                      /* ID  */
-    LITERAL = 284,                 /* LITERAL  */
-    MAIN = 285                     /* MAIN  */
+    VOID = 276,                    /* VOID  */
+    DECL = 277,                    /* DECL  */
+    ENDDECL = 278,                 /* ENDDECL  */
+    RETURN = 279,                  /* RETURN  */
+    TYPE = 280,                    /* TYPE  */
+    ENDTYPE = 281,                 /* ENDTYPE  */
+    MALLOC = 282,                  /* MALLOC  */
+    ARROW = 283,                   /* ARROW  */
+    Null = 284,                    /* Null  */
+    NUM = 285,                     /* NUM  */
+    ID = 286,                      /* ID  */
+    LITERAL = 287,                 /* LITERAL  */
+    MAIN = 288                     /* MAIN  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -108,30 +111,36 @@ extern int yydebug;
 #define CONTINUE 273
 #define REPEAT 274
 #define UNTIL 275
-#define INT 276
-#define STR 277
-#define VOID 278
-#define DECL 279
-#define ENDDECL 280
-#define RETURN 281
-#define NUM 282
-#define ID 283
-#define LITERAL 284
-#define MAIN 285
+#define VOID 276
+#define DECL 277
+#define ENDDECL 278
+#define RETURN 279
+#define TYPE 280
+#define ENDTYPE 281
+#define MALLOC 282
+#define ARROW 283
+#define Null 284
+#define NUM 285
+#define ID 286
+#define LITERAL 287
+#define MAIN 288
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 40 "main.y"
+#line 51 "main.y"
 
     int Int;
     char Char;
     struct node* nodePtr;
     char* String;
     struct Lnode* listPtr;
+    struct Fieldlist* fieldPtr;
+    struct Typetable* typePtr;
+    struct typeCapsule* typeCapsule;
 
-#line 135 "y.tab.h"
+#line 144 "y.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

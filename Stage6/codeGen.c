@@ -5,6 +5,146 @@
 #include "tree.h"
 
 // Lhead;
+// []
+
+int genCode(node* root){
+    if(root==NULL){
+        printf("NULL codegen recieved\n");
+        return 0;
+    }
+    else{
+        printf("nodeType : %d\n",root->nodeType);
+    }
+    int reg;
+    int addr;
+    switch(root->nodeType){
+        case tCONNECT: //connector
+            if(root->left)genCode(root->left);
+            if(root->right)genCode(root->right);
+        break;
+        case tCONST: //constants
+            reg=getReg();
+            fprintf(outFile,"MOV R%d, %d\n",reg,root->val);
+            // handleWrite(reg);
+            return reg;
+        break;
+        case tLITERAL:
+            reg=getReg();
+            fprintf(outFile,"MOV R%d, \"%s\"\n",reg,root->literal);
+            return reg;
+        break;
+        case tVAR: //Variable
+            reg=getReg();
+            // fprintf(outFile,"MOV R%d, [%d]\n",reg,root->var->binding);
+            if(root->Lvar) addr=root->Lvar->binding;
+            else {
+                fprintf(outFile,"MOV R%d, [%d]\n",reg,root->Gvar->binding);
+                return reg;
+            }
+            fprintf(outFile,"MOV R%d, %d\n",reg,addr);
+            fprintf(outFile,"ADD R%d,BP\n",reg);
+            fprintf(outFile,"MOV R%d, [R%d]\n",reg,reg);
+            return reg;
+        break;
+        case tARRVAL: //Variable
+            reg=calculateAddress(root);
+            fprintf(outFile,"JZ R%d, SEGFAULT!\n",reg);
+            fprintf(outFile,"MOV R%d, [R%d]\n",reg,reg);
+            return reg;
+        break;
+        case tARRADDR: //address of array access for assignments
+            reg=calculateAddress(root);
+            return reg;
+        break;
+        case tREAD: //Read
+            handleRead(root);
+        break;
+        case tWRITE: //Write
+            reg=genCode(root->left);
+            handleWrite(reg);
+            freeReg();
+        break;
+        case tASSIGN: //=
+            handleAssignment(root);
+        break;
+        case tIF:
+            handleIfElse(root);
+        break;
+        case tWHILE:
+            handleWhile(root);
+        break;
+        case tDOWHILE:
+            handleDoWhile(root);
+        break;
+        case tREPEATUNTIL:
+            handleRepeatUntil(root);
+        break;
+        case tBREAK:
+            // if(WHILELABELS[1]!=-1) fprintf(outFile,"JMP L%d!\n",WHILELABELS[1]);
+            if(breakLabels) fprintf(outFile,"JMP L%d!\n",breakLabels->num);
+            else {
+                yyerror("break outside looping statement\n");
+                exit(0);
+            }
+        break;
+        case tCONTINUE:
+            // if(WHILELABELS[0]!=-1) fprintf(outFile,"JMP L%d!\n",WHILELABELS[0]);
+            if(continueLabels) fprintf(outFile,"JMP L%d!\n",continueLabels->num);
+            else{
+                yyerror("continue outside looping statement\n");
+                exit(0);
+            }
+        break;
+        case tADDRESSOF:
+            return handleAddressOf(root);
+        break;
+        case tRECURSADDR:
+            return handleRecursAddress(root);
+        break;
+        case tRECURSADDRATVAL:
+            return handleRecursAddressAtVal(root);
+        break;
+        case tGETVAL:
+            return handleValueAt(root);
+        break;
+        case tGETADDRATVAL:
+            return handleAddressAtVal(root);
+        break;
+        // case tVALUEAT :
+        //     return handleValueAt(root);
+        // break;
+        case tMOD:
+            return handleArithmetic(root);
+        break;
+        case tAND:
+            return handleAnd(root);
+        break;
+        case tOR:
+            return handleOR(root);
+        break;
+        case tFUNCTCALL:
+            return handleFunctioncall(root);
+        break;
+        case tRETURN:
+            return handleFunctionReturn(root);
+        break;
+        case tMALLOC:
+            return handleMalloc(root);
+        break;
+        case tNULL:
+            reg=getReg();
+            fprintf(outFile,"MOV R%d, 0\n",reg);
+            return reg;
+        break;
+    }
+    if(root->nodeType>4 && root->nodeType<9){ //+-*/
+        return handleArithmetic(root);
+    }
+    else if(root->nodeType>9 && root->nodeType<16){ // < > <= >= == !=
+        return handleComparison(root);
+    }
+    return 100;// junk
+}
 
 void handleDoWhile(node* root){
     if(root==NULL || root->nodeType!=tDOWHILE) return;
@@ -103,119 +243,6 @@ void handleIfElse(node* root){
     freeReg();
 }
 
-int genCode(node* root){
-    if(root==NULL){
-        printf("NULL codegen recieved\n");
-        return 0;
-    }
-    else{
-        printf("nodeType : %d\n",root->nodeType);
-    }
-    int reg;
-    int addr;
-    switch(root->nodeType){
-        case tCONNECT: //connector
-            if(root->left)genCode(root->left);
-            if(root->right)genCode(root->right);
-        break;
-        case tCONST: //constants
-            reg=getReg();
-            fprintf(outFile,"MOV R%d, %d\n",reg,root->val);
-            // handleWrite(reg);
-            return reg;
-        break;
-        case tLITERAL:
-            reg=getReg();
-            fprintf(outFile,"MOV R%d, \"%s\"\n",reg,root->literal);
-            return reg;
-        break;
-        case tVAR: //Variable
-            reg=getReg();
-            // fprintf(outFile,"MOV R%d, [%d]\n",reg,root->var->binding);
-            if(root->Lvar) addr=root->Lvar->binding;
-            else {
-                fprintf(outFile,"MOV R%d, [%d]\n",reg,root->Gvar->binding);
-                return reg;
-            }
-            fprintf(outFile,"MOV R%d, %d\n",reg,addr);
-            fprintf(outFile,"ADD R%d,BP\n",reg);
-            fprintf(outFile,"MOV R%d, [R%d]\n",reg,reg);
-            return reg;
-        break;
-        case tARRVAL: //Variable
-            reg=calculateAddress(root);
-            fprintf(outFile,"MOV R%d, [R%d]\n",reg,reg);
-            return reg;
-        break;
-        case tREAD: //Read
-            handleRead(root);
-        break;
-        case tWRITE: //Write
-            reg=genCode(root->left);
-            handleWrite(reg);
-            freeReg();
-        break;
-        case tASSIGN: //=
-            handleAssignment(root);
-        break;
-        case tIF:
-            handleIfElse(root);
-        break;
-        case tWHILE:
-            handleWhile(root);
-        break;
-        case tDOWHILE:
-            handleDoWhile(root);
-        break;
-        case tREPEATUNTIL:
-            handleRepeatUntil(root);
-        break;
-        case tBREAK:
-            // if(WHILELABELS[1]!=-1) fprintf(outFile,"JMP L%d!\n",WHILELABELS[1]);
-            if(breakLabels) fprintf(outFile,"JMP L%d!\n",breakLabels->num);
-            else {
-                yyerror("break outside looping statement\n");
-                exit(0);
-            }
-        break;
-        case tCONTINUE:
-            // if(WHILELABELS[0]!=-1) fprintf(outFile,"JMP L%d!\n",WHILELABELS[0]);
-            if(continueLabels) fprintf(outFile,"JMP L%d!\n",continueLabels->num);
-            else{
-                yyerror("continue outside looping statement\n");
-                exit(0);
-            }
-        break;
-        case tADDRESSOF:
-            return handleAddressOf(root);
-        break;
-        case tVALUEAT :
-            return handleValueAt(root);
-        break;
-        case tMOD:
-            return handleArithmetic(root);
-        break;
-        case tAND:
-            return handleAnd(root);
-        break;
-        case tOR:
-            return handleOR(root);
-        break;
-        case tFUNCTCALL:
-            return handleFunctioncall(root);
-        break;
-        case tRETURN:
-            return handleFunctionReturn(root);
-        break;
-    }
-    if(root->nodeType>4 && root->nodeType<9){ //+-*/
-        return handleArithmetic(root);
-    }
-    else if(root->nodeType>9 && root->nodeType<16){ // < > <= >= == !=
-        return handleComparison(root);
-    }
-    return 100;// junk
-}
 int handleAnd(node* root){
     int r1=genCode(root->left);
     int r2=genCode(root->right);
@@ -243,6 +270,7 @@ int handleFunctionReturn(node* root){
     int r1=getReg();
     fprintf(outFile,"MOV R%d, BP\n",r1);
     fprintf(outFile,"SUB R%d, 2\n",r1);
+    fprintf(outFile,"JZ R%d, SEGFAULT!\n",r1);
     fprintf(outFile,"MOV [R%d], R%d\n",r1,reg);
     Lsymbol* lvar=currFunction->fsymbols;
     for(;lvar;lvar=lvar->next){
@@ -312,18 +340,9 @@ int calculateAddress(node* root){
 }
 
 int handleValueAt(node* root){
-    int reg=getReg();
-    int addr;
-    if(root->left->Lvar) addr=root->left->Lvar->binding;
-    else{
-        fprintf(outFile,"MOV R%d, [%d]\n",reg,root->left->Gvar->binding);
-        fprintf(outFile,"MOV R%d, [R%d]\n",reg,reg);
-        return reg;
-    }
-    fprintf(outFile,"MOV R%d, %d\n",reg,addr);
-    fprintf(outFile,"ADD R%d, BP\n",reg);
-    fprintf(outFile,"MOV R%d, [R%d]\n",reg,reg);
-    fprintf(outFile,"MOV R%d, [R%d]\n",reg,reg);
+    int reg=genCode(root->left);
+    fprintf(outFile,"JZ R%d, SEGFAULT!\n",reg);
+    fprintf(outFile,"MOV R%d,[R%d]\n",reg,reg);
     return reg;
 }
 
@@ -339,50 +358,35 @@ int handleAddressOf(node* root){
     fprintf(outFile,"ADD R%d, BP\n",reg);
     return reg;
 }
+int handleRecursAddress(node* root){
+    int addr=genCode(root->left);
+    int offset=genCode(root->right);
+    fprintf(outFile,"ADD R%d, R%d\n",addr,offset);
+    freeReg();
+    return addr;
+}
+int handleRecursAddressAtVal(node* root){
+    int addr=genCode(root->left);
+    int offset=genCode(root->right);
+    fprintf(outFile,"JZ R%d, SEGFAULT!\n",addr);
+    fprintf(outFile,"MOV R%d, [R%d]\n",addr,addr);
+    fprintf(outFile,"ADD R%d, R%d\n",addr,offset);
+    freeReg();
+    return addr;
+}
+int handleAddressAtVal(node* root){
+    int addr=genCode(root->left);
+    fprintf(outFile,"JZ R%d, SEGFAULT!\n",addr);
+    fprintf(outFile,"MOV R%d, [R%d]\n",addr,addr);
+    return addr;
+}
 
 void handleAssignment(node* root){
     int reg=genCode(root->right);
-    int addr;
-    node* ptr;
-    switch(root->left->nodeType){
-        case tVAR:
-            if(root->left->Lvar){
-                addr=root->left->Lvar->binding;
-                int r1=getReg();
-                fprintf(outFile,"MOV R%d,%d\n",r1,addr);
-                fprintf(outFile,"ADD R%d,BP\n",r1);
-                fprintf(outFile,"MOV [R%d], R%d\n",r1,reg);
-                freeReg();
-            }
-            else{
-                fprintf(outFile,"MOV [%d], R%d\n",root->left->Gvar->binding,reg);
-            }
-        break;
-        case tARRVAL:
-            printf("array assignment\n");
-            int r=calculateAddress(root->left);
-            fprintf(outFile,"MOV [R%d], R%d\n",r,reg);
-            // handleWrite(r);
-            // handleWrite(reg);
-            freeReg();
-        break;
-        case tVALUEAT:
-            int reg1=getReg();
-            ptr=root->left->left; //the variable
-            if(ptr->Lvar){
-                addr=ptr->Lvar->binding;
-                fprintf(outFile,"MOV R%d,%d\n",reg1,addr);
-                fprintf(outFile,"ADD R%d,BP\n",reg1);
-                fprintf(outFile,"MOV R%d,[R%d]\n",reg1,reg1);
-                fprintf(outFile,"MOV [R%d], R%d\n",reg1,reg);
-            }
-            else{
-                fprintf(outFile,"MOV R%d, [%d]\n",reg1,ptr->Gvar->binding);
-                fprintf(outFile,"MOV [R%d], R%d\n",reg1,reg);
-            }
-            freeReg();
-        break;
-    }
+    int addr=genCode(root->left);
+    fprintf(outFile,"JZ R%d, SEGFAULT!\n",addr);
+    fprintf(outFile,"MOV [R%d], R%d\n",addr,reg);
+    freeReg();
     freeReg();
 }
 
@@ -446,7 +450,53 @@ void handleWrite(int Wreg){
     freeReg();
     for(r--;r>=0;r--) fprintf(outFile,"POP R%d\n",r);
 }
+int handleMalloc(node* root){
+    int r;
+    for(r=0;r<currReg;r++){
+        fprintf(outFile,"PUSH R%d\n",r);
+    }
+    int reg=getReg();
+    fprintf(outFile,"MOV R%d, \"Alloc\"\n",reg); //funct code
+    fprintf(outFile,"PUSH R%d\n",reg);
+    fprintf(outFile,"MOV R%d, 8\n",reg); //arg 1=8,size of memory block
+    fprintf(outFile,"PUSH R%d\n",reg);
+    fprintf(outFile,"PUSH R%d\n",reg);  //arg 2
+    fprintf(outFile,"PUSH R%d\n",reg);  //arg 3
+    fprintf(outFile,"PUSH R%d\n",reg);  // space for return value
+    
+    fprintf(outFile,"CALL 0\n");
+    fprintf(outFile,"BRKP\n");
 
+    int reg2=getReg();
+    fprintf(outFile,"POP R%d\n",reg);   // return value has memory address location
+    fprintf(outFile,"POP R%d\n",reg2);
+    fprintf(outFile,"POP R%d\n",reg2);
+    fprintf(outFile,"POP R%d\n",reg2);
+    fprintf(outFile,"POP R%d\n",reg2);
+    freeReg();
+    for(r--;r>=0;r--) fprintf(outFile,"POP R%d\n",r);
+    return reg;
+}
+
+void initializeHeapSet(){
+    int reg=getReg();
+    fprintf(outFile,"MOV R%d, \"Heapset\"\n",reg); //funct code
+    fprintf(outFile,"PUSH R%d\n",reg);
+    fprintf(outFile,"PUSH R%d\n",reg);  //arg1
+    fprintf(outFile,"PUSH R%d\n",reg);  //arg 2
+    fprintf(outFile,"PUSH R%d\n",reg);  //arg 3
+    fprintf(outFile,"PUSH R%d\n",reg);  // space for return value
+    
+    fprintf(outFile,"CALL 0\n");
+    fprintf(outFile,"BRKP\n");
+
+    fprintf(outFile,"POP R%d\n",reg);   // return value has memory address location
+    fprintf(outFile,"POP R%d\n",reg);
+    fprintf(outFile,"POP R%d\n",reg);
+    fprintf(outFile,"POP R%d\n",reg);
+    fprintf(outFile,"POP R%d\n",reg);
+    freeReg();
+}
 void genHeader(){
     fprintf(outFile,"0\n2056\n0\n0\n0\n0\n0\n0\nBRKP\n");
 }
@@ -496,6 +546,14 @@ void genExit(){
     fprintf(outFile,"PUSH R0\n");
     fprintf(outFile,"PUSH R0\n");
     fprintf(outFile,"CALL 0\n");
+}
+void genSegmenationFault(){
+    int reg=getReg();
+    fprintf(outFile,"SEGFAULT:\n");
+    fprintf(outFile,"MOV R%d,\"**seg fault**\"\n",reg);
+    fprintf(outFile,"PUSH R%d\n",reg);
+    fprintf(outFile,"JMP ERRORMESS!\n");
+    freeReg();
 }
 void genErrorHandler(){
     int reg=getReg();

@@ -1,4 +1,5 @@
 #pragma once
+#include<stdbool.h>
 
 // for type of variable
 #define booltype 0
@@ -41,15 +42,39 @@
 #define tADDRESSOF 24 // for &ptr
 #define tVALUEAT 25 // for *ptr
 #define tARRVAL 26 // for array node, val stores offset
+#define tARRADDR 37 // for array node, to get address of array node
 #define tLITERAL 27
 #define tMOD 28
 #define tRETURN 29 // return statement
 #define tFUNCT 30 // for function definitions
 #define tFUNCTCALL 31 // for function calls
+#define tRECURSADDRATVAL 32 // for recursive address from value in reg
+#define tRECURSADDR 33 // for recursive address calculation
+#define tGETVAL 34 // for getting value from address node
+#define tGETADDRATVAL 35 // for getting value from address node
+#define tMALLOC 36 // 
+// 37 used up
+#define tNULL 38 // just returns -1 as pointer address. invalid address ie
+
+typedef struct Fieldlist{
+    char *name;              //name of the field
+    int fieldIndex;          //the position of the field in the field list
+    struct Typetable *type;  //pointer to type table entry of the field's type
+    struct Typetable *ptrType;  //if type is pointer, pointer to type of pointer 
+    struct Fieldlist *next;  //pointer to the next field
+}Fieldlist;
+typedef struct Typetable{
+    char *name;                 //type name
+    int size;                   //size of the type, in this case no. of entries in fieldlist
+    struct Fieldlist *fields;   //pointer to the head of fields list // null means default type
+    struct Typetable *next;     // pointer to the next type table entry
+}Typetable;
+extern Typetable* Types;
 
 typedef struct node{
     int val;    //leaf node val
-    int type;   // type of variable inttype or booltype or ....
+    Typetable* type;   // type of variable, pointer to type table entry
+    Typetable* ptrType;   // if type is of pointer type, ptrType points to the type of pointer
     struct Gsymbol* Gvar; // pointer to global variable
     struct Lsymbol* Lvar; // pointer to local variable
     int nodeType; // leaf node info read/write/+/*/...
@@ -68,7 +93,9 @@ typedef struct Lnode{
 
 typedef struct Gsymbol{
     char* name; // name of variable
-    int type; // type of variable
+    Typetable* type; // type of variable, pointer to type table
+    Typetable* ptrType; // if type is of pointer type, ptrType points to the type of pointer
+    // if type is array, then ptrType points to type of array
     int size; // size of variable
     int binding; // static memory address allocated 
     struct Gsymbol* next;
@@ -80,32 +107,37 @@ typedef struct Gsymbol{
 
 typedef struct Lsymbol{
     char* name; // name of variable
-    int type; // type of variable
+    Typetable* type; // type of variable, pointer to type table entry
+    Typetable* ptrType; // if type is of pointer type, ptrType points to type of pointer 
     int binding; // static memory address allocated, this one is relative, it only tells the relative position of each variable 
     struct Lsymbol* next;
 }Lsymbol;
 
-
-
+void InstallType(char *name,int size, struct Fieldlist *fields);
+Typetable* lookUpType(char *name);
+void createTypeTable();
+Fieldlist* makeField(char* name,int fieldIndex,Typetable* type,Fieldlist* next);
+Typetable* makeTypeNode(char* name); // fieldlist temporary typenode maker
+Fieldlist* LookupField(Typetable *type, char *name);
 extern int space;
 
-node* makeNode(int val,int type,Gsymbol* Gvar,Lsymbol* Lvar,int nodeType,node* left,node* right,node* center);
+node* makeNode(int val,Typetable* type,Gsymbol* Gvar,Lsymbol* Lvar,int nodeType,node* left,node* right,node* center);
 // void printTree(node* root);
 
 extern Gsymbol* Ghead;
 
 extern Lsymbol* Lhead;
 
-void installG(char* name,int type, int size,int binding);
+void installG(char* name,Typetable* type, int size,int binding);
 Gsymbol* lookUpG(char* name);
 
-void installL(char* name,int type,int binding);
+void installL(char* name,Typetable* type,Typetable* ptrType,int binding);
 Lsymbol* lookUpL(char* name);
 
 Lnode* makeLnode(char* s,int num,Lnode* next); //handy Listnode;
 
 
-/* ATTRIBUTE STACK LOOKS LIKE THIS  
+/* ATTRIBUTE STACK LOOK CONTENT  
 atri n
 .....
 atri 2
@@ -142,3 +174,12 @@ local var 2
 ..... 
 local var m
 */
+
+typedef struct typeCapsule{
+    Typetable* type;
+    bool isPtr;
+}typeCapsule;
+
+void maketypeCapsule(Typetable* type,bool isPtr);
+
+//  note that functions cannot return pointers yet

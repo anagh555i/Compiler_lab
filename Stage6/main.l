@@ -1,6 +1,7 @@
 %{
     #include "y.tab.h"  
-    #include<string.h>  
+    #include<string.h> 
+    int count=1; 
 %}
 
 %%
@@ -21,18 +22,22 @@
 "until"    {printf("Found %s\n",yytext); return UNTIL;}
 "decl"    {printf("Found %s\n",yytext); return DECL;}
 "enddecl"    {printf("Found %s\n",yytext); return ENDDECL;}
-"int"    {printf("Found %s\n",yytext); return INT;}
-"string"    {printf("Found %s\n",yytext); return STR;}
 "void"    {printf("Found %s\n",yytext); return VOID;}
 "return"    {printf("Found %s\n",yytext); return RETURN;}
+"type"    {printf("Found %s\n",yytext); return TYPE;}
+"endtype"    {printf("Found %s\n",yytext); return ENDTYPE;}
+"malloc"    {printf("Found %s\n",yytext); return MALLOC;}
+"->"    {printf("Found %s\n",yytext); return ARROW;}
 "main"    {printf("Found %s\n",yytext);yylval.String=strdup(yytext); return MAIN;}
+"null"    {printf("Found %s\n",yytext); return Null;}
+"//"[a-zA-Z0-9 (|)|+|\-|*|/|;|%|=|<|>|,|&|{|}|\[|\]\.]+    {}
 [!][=]  { printf("Found %s\n",yytext); return NEQ;}
 [=][=]  { printf("Found %s\n",yytext); return EQ;}
 [<][=]  { printf("Found %s\n",yytext); return LE;}
 [>][=]  { printf("Found %s\n",yytext); return GE;}  
 
 [0-9]+              {yylval.Int=atoi(yytext); return NUM;}
-[(|)|+|\-|*|/|;|%|=|<|>|,|&|{|}|\[|\]]    {printf("found %s\n",yytext);return *yytext;}
+[(|)|+|\-|*|/|;|%|=|<|>|,|&|{|}|\[|\]\.]    {printf("found %s\n",yytext);return *yytext;}
 [a-zA-Z][a-zA-Z0-9]*    {
                             printf("found %s %d\n",yytext,yyleng);
                             yylval.String=strdup(yytext); return ID;
@@ -44,7 +49,8 @@
                             yylval.String=strdup(t);
                             return LITERAL;
                         }
-[ \n\t]             {;}
+[ \t]             {;}
+[\n]               {count++;printf("Line %d ####################\n",count);}
 .                   {printf("Unexpected Character\n");
                     exit(0);}
 

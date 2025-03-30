@@ -2,6 +2,15 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+// #include "y.tab.h"
+extern void yyerror(char* s);
+
+// void maketypeCapsule(Typetable* type,bool isPtr){
+//     typeCapsule* ptr=(typeCapsule*)malloc(sizeof(typeCapsule));
+//     ptr->type=type;
+//     ptr->isPtr=isPtr;
+//     return ptr;
+// }
 
 Lnode* makeLnode(char* s,int num,Lnode* next){
     Lnode* ptr;
@@ -13,7 +22,87 @@ Lnode* makeLnode(char* s,int num,Lnode* next){
     return ptr;
 }
 
-void installG(char* name,int type, int size,int binding){
+void createTypeTable(){
+    char* defaultType;
+    defaultType=strdup("int");
+    InstallType(defaultType,1,NULL);
+    defaultType=strdup("string");
+    InstallType(defaultType,1,NULL);
+    defaultType=strdup("ptr");
+    InstallType(defaultType,1,NULL);
+    defaultType=strdup("bool");
+    InstallType(defaultType,1,NULL);
+    defaultType=strdup("array");
+    InstallType(defaultType,1,NULL);
+    defaultType=strdup("null");
+    InstallType(defaultType,1,NULL);
+}
+
+Typetable* makeTypeNode(char* name){
+    Typetable* ptr=(Typetable*)malloc(sizeof(Typetable));
+    ptr->name=name;
+    ptr->size=0;
+    ptr->fields=NULL;
+    ptr->next=NULL;
+    return ptr;
+}
+
+void InstallType(char *name,int size, struct Fieldlist *fields){
+    Typetable* ptr=Types;
+    for(;ptr;ptr=ptr->next){
+        if(strcmp(ptr->name,name)==0) return; // return if type name already exists;
+    }
+    ptr=(Typetable*)malloc(sizeof(Typetable));
+    ptr->name=name;
+    ptr->size=size;
+    ptr->fields=fields;
+    ptr->next=Types;
+    Types=ptr;
+}
+
+Fieldlist* makeField(char* name,int fieldIndex,Typetable* type,Fieldlist* next){
+    Fieldlist* ptr;
+    ptr=(Fieldlist*)malloc(sizeof(Fieldlist));
+    ptr->name=name;
+    ptr->fieldIndex=fieldIndex;
+    ptr->type=type;
+    ptr->ptrType=type;
+    ptr->next=next;
+    return ptr;
+}
+Fieldlist* LookupField(Typetable *type, char *name){
+    // if(type) printf("ptr Type is %s\n",type->name);
+    // else printf("Ptr type empty\n");
+    if(!type) yyerror("No such field ");
+    Fieldlist* ptr=type->fields;
+    printf("fields in %s\n",type->name);
+    for(;ptr!=NULL;ptr=ptr->next){
+        if(ptr->name)printf("%s %s\n",ptr->name,name);
+        else printf("name points to null");
+        if(strcmp(ptr->name,name)==0){
+            printf("hit\n");
+            return ptr;
+        }
+    }
+    printf("end of fields");
+    return NULL;
+}
+
+Typetable* lookUpType(char *name){
+    Typetable* ptr=Types;
+    printf("Types searching:\n");
+    for(;ptr;ptr=ptr->next){
+        printf("%s ",ptr->name);
+        if(strcmp(ptr->name,name)==0) {
+            printf("\n");
+            return ptr; 
+        }
+    }
+    printf("\n");
+    return NULL;
+}
+
+void installG(char* name,Typetable* type, int size,int binding){
     Gsymbol* ptr;
     ptr=(Gsymbol*)malloc(sizeof(Gsymbol));
     ptr->name=name;
@@ -26,13 +115,15 @@ void installG(char* name,int type, int size,int binding){
     ptr->next=Ghead;
     Ghead=ptr;
 }
-void installL(char* name,int type,int binding){
+void installL(char* name,Typetable* type,Typetable* ptrType,int binding){
     Lsymbol* ptr;
     ptr=(Lsymbol*)malloc(sizeof(Lsymbol));
     ptr->name=name;
     ptr->type=type;
+    ptr->ptrType=ptrType;
     ptr->binding=binding;
     ptr->next=NULL;
+
     // add ptr to end of list; to maintain relative order among arguments
     Lsymbol* temp=Lhead;
     while(temp && temp->next) temp=temp->next;
@@ -57,7 +148,7 @@ Lsymbol* lookUpL(char* name){
     return NULL;
 }
 
-node* makeNode(int val,int type,Gsymbol* Gvar,Lsymbol* Lvar,int nodeType,node* left,node* right,node* center){
+node* makeNode(int val,Typetable* type,Gsymbol* Gvar,Lsymbol* Lvar,int nodeType,node* left,node* right,node* center){
     node* ptr;
     ptr=(node*)malloc(sizeof(node));
     ptr->val=val;
