@@ -1,0 +1,18 @@
+decl
+    int i,n,k,sum;
+enddecl 
+
+begin 
+    write("Enter number:");
+    read(n);
+    i=1;
+    k=1;
+    sum=0;
+    while(i<=n){
+        k=k*i;
+        sum=sum+k;
+        i=i+1;
+    }
+    write("Sum 1 to n!");
+    write(sum);
+end

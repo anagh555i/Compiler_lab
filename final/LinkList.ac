@@ -1,0 +1,50 @@
+type
+  List
+  {
+    int data;
+    List* next;
+  }
+endtype
+
+decl
+    List *head;
+enddecl
+
+void main()
+{
+  decl
+    int length, x;
+    List *p, *q;
+  enddecl
+
+  begin
+    
+    head=null;
+    read(length); 
+    q=head;
+    while (length!=0){
+      read(x);
+      p=malloc(List);
+      p->data=x;
+      p->next=null;
+
+      if (head==null){
+        head=p;
+        q=p;
+      }
+      else{
+        q->next=p;
+        q=q->next;
+      }
+      length=length-1;
+    }
+
+    p=head;
+    while(p!=null){
+      write(p->data);
+      p=p->next;
+    }
+
+    return ;
+  end
+}

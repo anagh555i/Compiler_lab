@@ -1,0 +1,51 @@
+decl 
+  int n,i,j,dup;
+  int arr[10];
+  int BubbleSort(int first, int last); 
+enddecl
+
+int BubbleSort(int first, int last)
+{
+  decl
+    int temp;
+  enddecl
+
+  begin
+    if((first < last) AND (last > 0)){
+        if(arr[first] > arr[first+1]){
+            temp = arr[first];
+            arr[first] = arr[first+1];
+            arr[first+1] = temp;
+        }
+        dup = BubbleSort(first+1, last);
+        dup = BubbleSort(first, last-1);
+    }
+    return 0;
+  end
+}
+
+void main(){
+    decl
+        int r;
+    enddecl
+
+    begin
+        read(n);
+        i=0;
+        while(i<n) {
+            read(r);
+            arr[i]=r;
+            i = i+1;
+        }
+
+        r = BubbleSort(0,n-1);
+
+        i=0;
+        write("sorted array");
+        while(i<n) {
+            write(arr[i]);
+            i = i+1;
+        }
+        return;
+    end
+}

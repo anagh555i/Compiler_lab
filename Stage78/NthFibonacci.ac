@@ -1,0 +1,36 @@
+decl
+    int i,j,n;
+    int arr[20];
+    int fib(int i);
+enddecl
+
+int fib(int i){
+    decl
+    enddecl
+    begin
+        if(arr[i]==-1){
+            arr[i]= fib(i-1)+fib(i-2);
+        }
+        return arr[i];
+    end
+}
+
+void main(){
+    decl 
+        int i;
+    enddecl
+    begin
+        i=0;
+        while(i<20){
+            arr[i]=-1;
+            i=i+1;
+        }
+        arr[0]=0;
+        arr[1]=0;
+        arr[2]=1;
+        read(i);
+        write("nth fibonacci:");
+        write(fib(i));
+        return ;
+    end
+}
