@@ -270,7 +270,7 @@ int handleOR(node* root){
 
 int handleFunctionReturn(node* root){
     // debug(0);
-    if(currMethod)printf("%s\n",currMethod->name);
+    // if(currMethod)printf("%s\n",currMethod->name);
     if(root->left && currFunction && (currFunction->type != root->left->type)) yyerror("type mismatch");
     else if(root->left && currMethod && (currMethod->type != root->left->type)) yyerror("type mismatch");
     if(currFunction==NULL && currMethod==NULL) yyerror("internal error (handleFunctionReturn)");

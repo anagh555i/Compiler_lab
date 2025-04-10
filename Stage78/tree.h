@@ -132,7 +132,7 @@ void InstallClass(char* name,int size,struct Fieldlist *fields,Typetable* parent
 
 void InstallType(char *name,int size, struct Fieldlist *fields);
 void InstallMethod(Typetable* class,Typetable* parent,char *name,Lsymbol* paramList,Lsymbol* fsymbols,int funcPosition,int flabel,node* fDefinition,Typetable* type);
-Methodlist* LookUpMethod(Typetable* class,char* name);
+Methodlist* LookUpMethod(Typetable* class,char* name,node* arguments);
 Typetable* lookUpType(char *name);
 void createTypeTable();
 Fieldlist* makeField(char* name,int fieldIndex,Typetable* type,Fieldlist* next);

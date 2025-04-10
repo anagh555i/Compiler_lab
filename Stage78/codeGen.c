@@ -311,6 +311,7 @@ int handleMethodcall(node* root){
     fprintf(outFile,"PUSH R0\n"); // space for return value;
     calculateMethodAddress(thisAddress,root->val);
     fprintf(outFile,"BRKP\n");
+    fprintf(outFile,"JZ R%d, SEGFAULT!\n",thisAddress);
     fprintf(outFile,"CALL R%d\n",thisAddress); // method position in virtual function table
     int reg=thisAddress;
     fprintf(outFile,"POP R%d\n",reg); //poping return value

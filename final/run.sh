@@ -1,9 +1,9 @@
 #!/bin/bash/
 
 lex main.l 
-yacc -d main.y
+yacc -d main.y 
 gcc lex.yy.c y.tab.c tree.c codeGen.c -o out
-./out
+./out test1.c
 
 lex Linker.l
 gcc lex.yy.c

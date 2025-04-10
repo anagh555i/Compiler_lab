@@ -622,7 +622,7 @@ Expr    :   Expr '+' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,INTTY
                                     }
         |   Var ARROW ID '(' ArgList ')'    {
                                                 if($1->right->type!=POINTERTYPE) yyerror("pointer access from static type");
-                                                Methodlist* method=LookUpMethod($1->right->ptrType,$3); //remember we only care about flabel
+                                                Methodlist* method=LookUpMethod($1->right->ptrType,$3,$5); //remember we only care about flabel
                                                 // printf("%s\n",$1->right->ptrType->name);
                                                 if(method==NULL) yyerror("No such method in class or any of its descendents");
                                                 // $1->center=$5; // adding address of obj to arglist, to accomodate for "this"
@@ -647,9 +647,10 @@ Expr    :   Expr '+' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,INTTY
                                             }
         |   Var ARROW ID '('')'    {
                                                 if($1->right->type!=POINTERTYPE) yyerror("pointer access from static type");
-                                                Methodlist* method=LookUpMethod($1->right->ptrType,$3); //remember we only care about flabel
+                                                Methodlist* method=LookUpMethod($1->right->ptrType,$3,NULL); //remember we only care about flabel
                                                 // printf("%s\n",$1->right->ptrType->name);
                                                 if(method==NULL) yyerror("No such method in class or any of its descendents");
+                                                
                                                 $1->center=NULL; // adding address of obj to arglist, to accomodate for "this"
                                                 node* arg=makeNode(0,POINTERTYPE,NULL,NULL,tGETADDRATVAL,$1,NULL,NULL);
                                                 arg->ptrType=$1->right->type;
@@ -669,7 +670,7 @@ Expr    :   Expr '+' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,INTTY
                                                 // val contains methodNo. in the class heirarchy
                                                 // debug(0);
                                             }
-        |   Var '.' ID '(' ArgList ')'      {
+        /* |   Var '.' ID '(' ArgList ')'      {
                                                 if($1->right->type==POINTERTYPE) yyerror("static access from pointer type");
                                                 Methodlist* method=LookUpMethod($1->right->type,$3); //remember we only care about flabel
                                                 if(method==NULL) yyerror("No such method in class or any of its descendents");
@@ -689,7 +690,7 @@ Expr    :   Expr '+' Expr           {if(isArithmetic($1,$3)) $$=makeNode(0,INTTY
                                                 $$=makeNode(method->funcPosition,method->type,NULL,NULL,tMETHODCALL,$1,NULL,NULL); // left contains arg list, val contains method label
                                                 // val contains methodNo. in the class heirarchy
                                                 // debug(0);
-                                            }
+                                            } */
         |  '&' Var                  {
                                     $$=$2;
                                     }
@@ -774,8 +775,8 @@ ArgList : Expr',' ArgList   {   // argument list will be linked with center poin
 
 %%
 
-int main(){
-    FILE *fp=fopen("test4.c","r");
+int main(int argc, char **argv){
+    FILE *fp=fopen(argv[1],"r");
     outFile=fopen("a.xsm","w");
     yyin=fp;
     SP=4096;

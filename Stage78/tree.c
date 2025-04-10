@@ -2,6 +2,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<stdbool.h>
 // #include "y.tab.h"
 extern void yyerror(char* s);
 extern void debug(int i);
@@ -75,7 +76,27 @@ void InstallMethod(Typetable* class,Typetable* parent,char *name,Lsymbol* paramL
     // what if the method already exist for the class;
     methods=class->vFunctPtr;
     for(;methods;methods=methods->next){
-        if(strcmp(methods->name,name)==0) yyerror("duplicate method declarations");
+        bool b=true; // same
+        printf("---------------- %s %s\n",methods->name,name);
+        Lsymbol* newParam=NULL, *oldParam;
+        if(paramList)newParam=paramList;
+        oldParam=methods->paramList;
+        while(newParam && oldParam){
+            printf("params: %s %s\n",oldParam->name,newParam->name);
+            if(newParam->binding>0 && oldParam->binding>0 ) break;
+            if(newParam->binding>0 && oldParam->binding<0 || newParam->binding<0 && oldParam->binding>0){
+                b=false;
+                break;
+            }
+            if(newParam->type != oldParam->type){
+                b=false;
+                break;
+            }
+            newParam=newParam->next;
+            oldParam=oldParam->next;
+        }
+        if(newParam && newParam->binding<0) b=false;
+        if(b && strcmp(methods->name,name)==0) yyerror("duplicate method declarations");
     }
     Methodlist* method=(Methodlist*)malloc(sizeof(Methodlist));
     method->name=name;
@@ -89,9 +110,29 @@ void InstallMethod(Typetable* class,Typetable* parent,char *name,Lsymbol* paramL
     printf("METHOD INSTALL %s %s\n",class->name,name);
     if(parent) methods=parent->vFunctPtr;
     for(;methods;methods=methods->next){ // search in parent vFunctiontable;
-        if(strcmp(methods->name,name)==0){
+        bool b=true; // same
+        printf("---------------- %s %s\n",methods->name,name);
+        Lsymbol* newParam=NULL, *oldParam;
+        if(paramList) newParam=paramList;
+        oldParam=methods->paramList;
+        while(newParam && oldParam){
+            printf("params: %s %s\n",oldParam->name,newParam->name);
+            if(newParam->binding>0 && oldParam->binding>0 ) break;
+            if(newParam->binding>0 && oldParam->binding<0 || newParam->binding<0 && oldParam->binding>0){
+                b=false;
+                break;
+            }
+            printf("types: %s %s\n",newParam->type->name,oldParam->type->name);
+            if(newParam->type != oldParam->type){
+                b=false;
+                break;
+            }
+            newParam=newParam->next;
+            oldParam=oldParam->next;
+        }
+        if(b && strcmp(methods->name,name)==0){
             method->funcPosition=methods->funcPosition;
-            printf("METHOD POSITION: %d\n",method->funcPosition);
+            printf("METHOD - POSITION: %d\n",method->funcPosition);
             class->methodCount++;
             class->vFunctPtr=method;
             return;
@@ -101,9 +142,26 @@ void InstallMethod(Typetable* class,Typetable* parent,char *name,Lsymbol* paramL
         if(sibling->parent!=parent) continue;
         methods=sibling->vFunctPtr;
         for(;methods;methods=methods->next){ //search in each siblings vFunctiontable
-            if(strcmp(methods->name,name)==0){
+            bool b=true; // same
+            Lsymbol* newParam=NULL, *oldParam;
+            if(paramList)newParam=paramList;
+            oldParam=methods->paramList;
+            while(newParam && oldParam){
+                if(newParam->binding>0 && oldParam->binding>0 ) break;
+                if(newParam->binding>0 && oldParam->binding<0 || newParam->binding<0 && oldParam->binding>0){
+                    b=false;
+                    break;
+                }
+                if(newParam->type != oldParam->type){
+                    b=false;
+                    break;
+                }
+                newParam=newParam->next;
+                oldParam=oldParam->next;
+            }
+            if(b && strcmp(methods->name,name)==0){
                 method->funcPosition=methods->funcPosition;
-                printf("METHOD POSITION: %d\n",method->funcPosition);
+                printf("METHOD_POSITION: %d\n",method->funcPosition);
                 class->methodCount++;
                 class->vFunctPtr=method;
                 return;
@@ -113,22 +171,36 @@ void InstallMethod(Typetable* class,Typetable* parent,char *name,Lsymbol* paramL
     // if no function of the name exist anywhere;
     if(parent){
         method->funcPosition=parent->methodCount++;
-        printf("METHOD POSITION: %d\n",method->funcPosition);
+        printf("METHOD @ POSITION: %d\n",method->funcPosition);
         class->vFunctPtr=method;
         class->methodCount++;
     }
     else {
         method->funcPosition=class->methodCount++;
         class->vFunctPtr=method;
-        printf("METHOD POSITION: %d\n",method->funcPosition);
+        printf("METHOD #POSITION: %d\n",method->funcPosition);
     }
 
 }
 
-Methodlist* LookUpMethod(Typetable* class,char* name){
+Methodlist* LookUpMethod(Typetable* class,char* name,node* arguments){
     Methodlist* methods=class->vFunctPtr;
     for(;methods;methods=methods->next){
-        if(strcmp(methods->name,name)==0) return methods;
+        bool b=true; // same;
+        Lsymbol* params=methods->paramList;
+        if(params) params=params->next;
+        node* args=arguments;
+        while(params && args){
+            if(params->binding>0) b=false;
+            if(params->type != args->type){
+                b=false;
+                break;
+            }
+            params=params->next;
+            args=args->center;
+        }
+        if((params && params->binding<0) || args) b=false;
+        if(b && strcmp(methods->name,name)==0) return methods;
     }
     // now check for method in childrens
     Typetable* ptr=Classes;
@@ -136,6 +208,20 @@ Methodlist* LookUpMethod(Typetable* class,char* name){
         if(ptr->parent==class){
             methods=ptr->vFunctPtr;
             for(;methods;methods=methods->next){
+                bool b=true; // same;
+                Lsymbol* params=methods->paramList;
+                if(params) params=params->next;
+                node* args=arguments;
+                while(params && args){
+                    if(params->binding>0) b=false;
+                    if(params->type != args->type){
+                        b=false;
+                        break;
+                    }
+                    params=params->next;
+                    args=args->center;
+                }
+                if((params && params->binding<0) || args) b=false;
                 if(strcmp(methods->name,name)==0) return methods;
             }
         }

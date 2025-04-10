@@ -46,6 +46,16 @@ class
                 return 1;
             end
         }
+        int printDetails(int a){
+            begin
+                write(this->name);
+                write(this->age);
+                write(this->rollnumber);
+                write(this->dept);
+                write(a);
+                return 1;
+            end
+        }
     }
 endclass
 
